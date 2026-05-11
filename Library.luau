@@ -17,7 +17,7 @@ for i, v in ipairs(SEQ) do
 end
 buffer.writeu8(INDEX_BUF, string.byte("="), 0)
 local b64 = {}
-function b64.encode(str: string)
+function b64.encode(str)
     local len = #str
     local out = table.create(math.ceil(len / 3) * 4)
     local index = 1
@@ -37,9 +37,9 @@ function b64.encode(str: string)
     end
     return table.concat(out)
 end
-function b64.decode(input: string)
+function b64.decode(input)
     local len = #input
-    local out = buffer.create((len // 4) * 3)
+    local out = buffer.create(math.floor(len / 4) * 3)
     local outIndex = 0
     for i = 1, len, 4 do
         local c0, c1, c2, c3 = string.byte(input, i, i + 3)
