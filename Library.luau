@@ -167,8 +167,8 @@ end, {
     Sprite_Not_For_Roundify = 'rbxassetid://3570695787',
     Images_Subtraction_1 = 'rbxassetid://4695575676',
     Saturation_Value = 'rbxassetid://4805274903',
-    Color_Picket_Circle_New = 'rbxassetid://4805639000',
-    Color_Pallete_New = 'rbxasset://4801885250'
+    Color_Picker_Circle_New = 'rbxassetid://4805639000',
+    Color_Pallete_New = 'rbxassetid://4801885250'
 }
 local getAsset, CoreGui, UseCoreGui = function(id)
     if getcustomasset and writefile then
