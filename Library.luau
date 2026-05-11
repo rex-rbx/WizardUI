@@ -33,7 +33,7 @@ function b64.encode(str)
         out[index + 1] = SEQ[bit32.extract(n, 12, 6)]
         out[index + 2] = b1 and SEQ[bit32.extract(n, 6, 6)] or "="
         out[index + 3] = b2 and SEQ[bit32.band(n, 63)] or "="
-        index += 4
+        index = index + 4
     end
     return table.concat(out)
 end
@@ -52,14 +52,14 @@ function b64.decode(input)
         local b1 = bit32.extract(n, 8, 8)
         local b2 = bit32.band(n, 0xFF)
         buffer.writeu8(out, outIndex, b0)
-        outIndex += 1
+        outIndex = outIndex + 1
         if c2 ~= 61 then
             buffer.writeu8(out, outIndex, b1)
-            outIndex += 1
+            outIndex = outIndex + 1
         end
         if c3 ~= 61 then
             buffer.writeu8(out, outIndex, b2)
-            outIndex += 1
+            outIndex = outIndex + 1
         end
     end
     return buffer.tostring(out)
