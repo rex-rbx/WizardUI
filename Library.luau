@@ -1,1772 +1,1623 @@
-local SEQ = {
-    [0] = "A","B","C","D","E","F","G","H",
-    "I","J","K","L","M","N","O","P",
-    "Q","R","S","T","U","V","W","X",
-    "Y","Z","a","b","c","d","e","f",
-    "g","h","i","j","k","l","m","n",
-    "o","p","q","r","s","t","u","v",
-    "w","x","y","z","0","1","2","3",
-    "4","5","6","7","8","9","+","/",
-}
-local INDEX_BUF = buffer.create(256)
+local SEQ, INDEX_BUF = {
+    [0] = 'A',
+    'B',
+    'C',
+    'D',
+    'E',
+    'F',
+    'G',
+    'H',
+    'I',
+    'J',
+    'K',
+    'L',
+    'M',
+    'N',
+    'O',
+    'P',
+    'Q',
+    'R',
+    'S',
+    'T',
+    'U',
+    'V',
+    'W',
+    'X',
+    'Y',
+    'Z',
+    'a',
+    'b',
+    'c',
+    'd',
+    'e',
+    'f',
+    'g',
+    'h',
+    'i',
+    'j',
+    'k',
+    'l',
+    'm',
+    'n',
+    'o',
+    'p',
+    'q',
+    'r',
+    's',
+    't',
+    'u',
+    'v',
+    'w',
+    'x',
+    'y',
+    'z',
+    '0',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '+',
+    '/',
+}, buffer.create(256)
+
 for i = 0, 255 do
     buffer.writeu8(INDEX_BUF, i, 0)
 end
-for i, v in ipairs(SEQ) do
+
+for i, v in ipairs(SEQ)do
     buffer.writeu8(INDEX_BUF, string.byte(v), i)
 end
-buffer.writeu8(INDEX_BUF, string.byte("="), 0)
+
+buffer.writeu8(INDEX_BUF, string.byte'=', 0)
+
 local b64 = {}
+
 function b64.encode(str)
     local len = #str
-    local out = table.create(math.ceil(len / 3) * 4)
-    local index = 1
+    local out, index = table.create(math.ceil(len / 3) * 4), 1
+
     for i = 1, len, 3 do
-        local b0 = string.byte(str, i)
-        local b1 = string.byte(str, i + 1)
-        local b2 = string.byte(str, i + 2)
-        local n =
-            bit32.lshift(b0, 16)
-            + bit32.lshift(b1 or 0, 8)
-            + (b2 or 0)
-        out[index]     = SEQ[bit32.extract(n, 18, 6)]
+        local b0, b1, b2 = string.byte(str, i), string.byte(str, i + 1), string.byte(str, i + 2)
+        local n = bit32.lshift(b0, 16) + bit32.lshift(b1 or 0, 8) + (b2 or 0)
+
+        out[index] = SEQ[bit32.extract(n, 18, 6)]
         out[index + 1] = SEQ[bit32.extract(n, 12, 6)]
-        out[index + 2] = b1 and SEQ[bit32.extract(n, 6, 6)] or "="
-        out[index + 3] = b2 and SEQ[bit32.band(n, 63)] or "="
+        out[index + 2] = b1 and SEQ[bit32.extract(n, 6, 6)] or '='
+        out[index + 3] = b2 and SEQ[bit32.band(n, 63)] or '='
         index = index + 4
     end
+
     return table.concat(out)
 end
 function b64.decode(input)
     local len = #input
-    local out = buffer.create(math.floor(len / 4) * 3)
-    local outIndex = 0
+    local out, outIndex = buffer.create(math.floor(len / 4) * 3), 0
+
     for i = 1, len, 4 do
         local c0, c1, c2, c3 = string.byte(input, i, i + 3)
-        local n =
-            bit32.lshift(buffer.readu8(INDEX_BUF, c0), 18)
-            + bit32.lshift(buffer.readu8(INDEX_BUF, c1), 12)
-            + bit32.lshift(buffer.readu8(INDEX_BUF, c2), 6)
-            + buffer.readu8(INDEX_BUF, c3)
-        local b0 = bit32.extract(n, 16, 8)
-        local b1 = bit32.extract(n, 8, 8)
-        local b2 = bit32.band(n, 0xFF)
+        local n = bit32.lshift(buffer.readu8(INDEX_BUF, c0), 18) + bit32.lshift(buffer.readu8(INDEX_BUF, c1), 12) + bit32.lshift(buffer.readu8(INDEX_BUF, c2), 6) + buffer.readu8(INDEX_BUF, c3)
+        local b0, b1, b2 = bit32.extract(n, 16, 8), bit32.extract(n, 8, 8), bit32.band(n, 0xff)
+
         buffer.writeu8(out, outIndex, b0)
+
         outIndex = outIndex + 1
+
         if c2 ~= 61 then
             buffer.writeu8(out, outIndex, b1)
+
             outIndex = outIndex + 1
         end
         if c3 ~= 61 then
             buffer.writeu8(out, outIndex, b2)
+
             outIndex = outIndex + 1
         end
     end
+
     return buffer.tostring(out)
 end
-local cloneref = cloneref or clonereference or function(inst) return inst end
-local UserInputService = cloneref(game:GetService("UserInputService"))
-local TweenService = cloneref(game:GetService("TweenService"))
-local RunService = cloneref(game:GetService("RunService"))
-local GuiService = cloneref(game:GetService("GuiService"))
-local HttpService = cloneref(game:GetService("HttpService"))
-local RandomUTF8String = function(Length)
-    local b = buffer.create(Length)
-    local offset = 0
-    local Ranges = {
-        {0xFF01, 0xFF5E},   -- Full Width Alphanumerics
-        {0x00A1, 0x00FF},   -- Latin-1 Symbols
-        {0x2000, 0x2BFF},   -- Math/Arrows
-        {0x4E00, 0x9FFF},   -- CJK/Asian
-        {0x1F600, 0x1F64F}, -- Emojis
-        {0xA000, 0xA48C},   -- Yi Blocky Symbols
+
+local cloneref = cloneref or clonereference or function(inst)
+    return inst
+end
+local UserInputService, TweenService, RunService, GuiService, HttpService, RandomUTF8String, CustomAssets, OrigAssets = cloneref(game:GetService'UserInputService'), cloneref(game:GetService'TweenService'), cloneref(game:GetService'RunService'), cloneref(game:GetService'GuiService'), cloneref(game:GetService'HttpService'), function(Length)
+    local b, offset, Ranges = buffer.create(Length), 0, {
+        {0xff01, 0xff5e},
+        {0xa1, 0xff},
+        {0x2000, 0x2bff},
+        {0x4e00, 0x9fff},
+        {0x1f600, 0x1f64f},
+        {0xa000, 0xa48c},
     }
+
     while offset < Length do
         local selectedRange = Ranges[math.random(1, #Ranges)]
         local codePoint = math.random(selectedRange[1], selectedRange[2])
         local str = utf8.char(codePoint)
         local charLen = #str
+
         if offset + charLen <= Length then
             for i = 1, charLen do
                 buffer.writeu8(b, offset, string.byte(str, i))
+
                 offset = offset + 1
             end
         else
             while offset < Length do
                 buffer.writeu8(b, offset, math.random(33, 126))
+
                 offset = offset + 1
             end
         end
     end
+
     return buffer.tostring(b)
-end
-local CustomAssets = {
-	["Sprite_Not_For_Roundify"] = "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",
-	["Images_Subtraction_1"] = "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",
-	["Saturation_Value"] = "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"
+end, {
+    Sprite_Not_For_Roundify = [[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]],
+    Images_Subtraction_1 = [[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]],
+    Saturation_Value = [[iVBORw0KGgoAAAANSUhEUgAAAaQAAAGkCAQAAADURZm+AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAJcEhZcwAADsMAAA7DAcdvqGQAAIAASURBVHjavP1bsiRLsh2ILfXYeaouAL6a0tKcAMfBUfTkOAWOhZ/sTwqF0mwQAHEB3FtV52TucFN+qC7VpebuO7OKIoxTtTPCH/Y2fSx9mLm7A4j/799u7pgD/pNn8HeV+CtPV61x9bHEfO6uHH3zvlY+8bNygHUZBYynvu7RzTPmQNZ43yMAWLOu2zbuddz0LcbTL+/Jte1pLcfcn8qBlDjethw3r9Flj7Zx3Eam717mf9Rq7osz02PGMb20MZ8197WNsFuWXXXBnCVIqb0SnP376GtffKwa8StP83l/uPPTQty4tOpKf6kuutmlnIeCDW7uox83DznH7+EhqymF2/5IvG3+2IIo9NoCA+DPA8KVAsAOroH5C/HtALB81MBnXMZ+L97yvbx/YFVLD18GH+95dPWFE3HnA4Dj9G1mDfKM3LEXTod94A33D/u0Dzd84gPAG/CPGqF3lg3/xDe4xTeW/Q0A8AnPFv1mP/gNgOM7/uRuwPeq+M/+h/0ZwO/4JwN+h3usM+Df4i85BbFCHMD/xv+rLXcAC7CF/wMA+P8DsE8A/0cH/q/2rw78J8D+R8DZVvz/6/PljN48+Sul7Z8x77Ulf17e8xPLgOMnhKQJsj4dbx8/qXw+sWJB+91z8Ltf8W3dkIllP+/4fE/f+DxeD2+f9dS7NtCJ18Mz16tv/sUbAPydbfjj+PC3ucO/5f3P45v/bh8OfB7wb/5p3xz43Ajyj6rrR2wF/5cD+JMQ8/96/Nn/MAD++zZOf71p53/dluj/24D/1/G/T8r1f7M/5N7/xXAkR/rpWP8S2xrPA8DdQDoe6G+RxF+rrwfjwuO8aaDlb6WX9lDeTY3ajPO61wEYmi/oZ+2/JjeaNN5q+dpDCdcRm4uhd7E9XPO79zz6PZ/pX5a9vtTr+jsWkMHh56WVvr/v465LKYAhN5bB8Tl69IY7DPiE8KG4Z2yQX6ohP4pff8ApUpbULNKwAe4p7QG2fOEEADv9xNuBD/vPxw//DgD2u//F/wuA/wX/kwP/owHHr6za5yfc3O6fn8LyP8TzjAP19TN3bVi//N8//LFlgGNpf2Pj3tTxXNMCUsDnM92uZeuh93XdnseHzyxD/nfG/+czlzrO/D9w4oQ+f+KUZ+a3cys5ONX5cOcN4G3v4Ef57Dvvf+Iz78f3v1lwoM/cRv35YfFfjISZGfhLPn98sYJ+N+CvAIC/1VP/amb/Ku/8t/H+n+xP9h/tn+zf2/9iAPAf7T8aANg7tuk/Cg1clf+bbw6jwvn09NB+tmubAh6ERGid7tao7+/okf0d/RjfbtVerFCptX772XvPbcwS47v/o+OPGJO6tr5uj39dA+C4A6jqOd/f0zfGXHv1rZ8VwAUCawDJLNyBb1lK6kVSjkdNNVrBgf603P/oheHz28pvy5entojly08/HXg78PZPB37492zL7w78zf/F/9n/vQPA/3kBH716/5GPKuhy9fpUqou8eRHnRUm2fFbU97rnXby78YnH5n8JLmTFUtemGMtOFWkHQGgwC6mo4wCQAtwtf+7rKYRYPxYlPDUOe9+3z+FcRdXAiy738hOHw6OlfDpAhcMBEcmqWQJfZO9OvHDaK599AXAMUc4B2CvmjyKhvXBGn41vnfAEG+Af9ubysYAb4tkPAJ8FbLD0D8A+q1+ftVtQ4t03h3/PunLvWg6Tf3fgTwD+wAIQsMOfs69/xQLwb7Lkv+D0E7B/h7/Yv/P/gk+H/a/z3n/A7w78BQDsX/DfAfif8H/3/1MAIyQqX8tQzzP9xV3jJtrxNX9c4r8ibLE8kq3983VPVg4ffx1fwAFjoiwFdQBntuA0wH2VBnbM1296uVf0tntgYWvzBce8e1v7Ed+XHX4WyQbe1cJPezlwPtQXdwOG+DTA8fLTgB+AvwCcduIlnSHQcFrv+oYh6qkaj7dADt0T/nrfro7fD0LMn/aJgBw+xlM/xks/zPGbA8D3LO+/2cKfHQD+MAf8D0u83AHgbxZCOAv5i73wl/z1Lwb8wI+tVf9s/ww48BcbYMM/yJVyuKyJ4ZjxKvsnxS8crbnuPOar3zeAOhnb5T3RjUtu99NyirvhX+xE4VIlRlqIcn4hA6y/Fwy5KUfKsfOUux4laOK31K4gcSP8rTLhBC3g0V8ENCCTdtrLj+ZNChy4E0jwes/hp8oH62Qr2WMYWu9hQeinDIaFwXNa9nB0P/q9d8t8/iOuHAofeDUXgBmAHwVEuLkvd/89yeJCjNfCwj/hd4uxWn7ixL/B9+PtpwOw3w326d8d+A7YH/gdyZHwL/hn/w+A/ff2/1QS+vdsI1VKetdcVf4vQIpYhdawgGPZaQtuE6Tw50XNIbrUYniCG74o7Umtf4Am2oajYxetyae9oAZbGygg4Jq5adkHnj+ELRoeUChjmXKY6zaKt5aZwAvL4j9cYAh+dp51NoggzwQxOu0dAAX2LRRc5qz3E4Kw9wEz1mxmb0vgIf+ajJveAZA86bN+f5ql5QgIGDzBcPfA2vDDvo8+/o7f89sf9ocRlvjd/ma/27+yFiMM8deHFRKb8KMXwD/8CeVuB17zzqPMlOYuv3ntF6psGh98AVPHcrirJsLPCYutb3cVXzek925Fc5wjvtvR/b40voXCBQC29HLqVpSnk4OURrTyzWsL1/Zv87OVNTVPWf03y2suvGhuZXkGL+uMVBp2JD7nOYbwsAethrftHC2dWykuvhEteFfvTjPakYQPvw2whMHfgmVE+3gtZyXEzXzm05bBfyRt/w4H8MO++XcAfwBmOPA9+dtKcOF7zszfsAD8bideaZWKDfQJ+F/tB4A/46/4A38D8Bf8qwP/DFhsxP8JJdppc3/+UXramvmjVf+6HuSCyGjliDGfuSnVtIicyVrUVhvqrglO/exGifet8ANrszB50mMDcA6vgUfQYHhLtNWJetXhui7yXvdSm1QwTfshsJ2EC3e4YIx7/nN4wHatsfQ1qc2LCGClCFq6IoD0XIjtFt+kVS83bpmu3V54g6V8FLIGj63x4e69yULszTItULZvCPtSyzOf4JJJqNS+paYUKNRyGA7zP6pv39bfECJdELfTF/5mpwN/2BkCJ07/w//JgN/t7X9z2Ce+A/jusH8C8P/B7/gbgD8A/PcA/mfAftUg+8Vnmc152tcRvFGtcf3O++QX67ytZ3672Dxv3jsu7/68nnxjGCYNjtOseFaWawtw3WB2U/I+KoGSfQF/2LoQGyrn2udnn4bmYAJN4MTrodZlJ+5Ezh9Gv4c7H4bepqcBLz/t5frc9yLBntDxH0YOGFvQ4Skwfea3zwFC9K/wduhr/P3DHN/8hzk+sRp4yHsBWf+wE3+S1v8NwJ8CnsBf8Gf8YX+Wu7/b79WCEhMd+Ac2UqDFMvPueJyzUH8Tdr2wGqhurVfr5RugikakWc94cLe+k1Zv18YiHjxu//RzpvtVRMKFEPPcT+UFFLyK1JzG8uy63/kMEHr4FXiInnnogNjF2513D4FsUq1NmAQSdGFrRVQ2ONyH14IX3ABMLtUtaN6ScHgB4RMn8hTj+FxUnlYefyO5kb9rArhuvCbB8Dm+xd/gyp9YHkLdDwTI8AHghx2IrXAA+I4TZ2KYbwfe+LDv+PS3/wW/2R/4gX/Cf0O4Bf2BP/AHvgP43wL4rwk4/F0bqeA5BRgui8/qmeW94U7MBWq6CtKS45dlZX7XtrECE4GiLNdc3nFpq8VkWeki3T4+dcKE9u5ecyL81KLtbeMIqGhVCYYFh4XVKbQSHMkrds5Cy80apR5oaB3Fd1IfcljZelKXUR4z50XaL3TvCAdsvLDKRnQErhfinrm/cP10TXNm49vLzlzjZ0naL3+Pzaa8JwbiI7YNJqT9STUen+Wq2rJ7cCr3t30A+IFv/mmOb/5p3/ADyx2wb1j+m/+rOZYv/IYfBvzA6cAHfliI6L/hb/iTf0+e+Ff8W3y3T3zi3+Ev+MQPAL8B+G/43WHf8R3fAfzJgf+Ab/gf7H/2Ahv+vo9/8ZvQa6yWXQv59TIFOP/lzxLr0F251mrGdjPWqXLNi1p/2zoR1tJfTDeeUxm3BW6hq4Cr9ey13gqxpkLAKh7ngOB5Px24ASOc1n51hCRY93nLrU+7XIrrYXa1Y/O8u6B4lwbxytvG3Hv9DjFufyulnrc54AE8/ADwWSP0aS//Xs//sJYR2p3oh73wHXDgw95Ot6Fv9j2f/B544Ojrf8zS8fdwpBboMoxgcoR9huKZa6hBzb+AG0ZS3iIbn3nlhIquvU2peiQ4bSRd3xBdqta2VYzPkb06iwdEBEpjaOYHfaVZxnE63EJVN+C11qw/l2ZaYswAP2ozBVRjOM1W8heH1LAbGDjentwC3j4WgA8cDnbXR7/+ciD5Lm1EgB/YvB0sAUCjmSYhTTvWKbOV3nghClqIcy9/XyQY6ZSVu04EV9QzL0SABa853vjwz3p3xSrz3xq3S4FkxSDZNyz8wPJl3/AjyRkAW37iNwCfdvryE7C3w068HPiX47W+4+3csj8Ai/L/xf8ADPgepll8Avjf4T/hP/v/cPwDHOk6FXOBnxcQ4f7tfYqX7SpMagJffOiVsOSN249tGtHN0+YDAAho+6G4A6c5YCGqaX/OgjUOxJYMDqWeHO/heoOvbFsyOhQMq4X0XfhibH79MwXB80IeCTc07EDOcx7Hur61BIE6sdI3Isy+Wu4bkOCLt4X3lKcY6MGPGl6AbyW87QN/w8vj3jcAPygAph3pteLXJz308u7LzgsH+W7Ap/1+2Pphv3kYXn+T+z8M+M2BH/ZOAfTT4DEPwpFu/TLyztWlpwZKsKuGUC9ogF69RRfW9emQtPEgQ8BTeT8fV7xvTz8U1BeTs3kui12mYYuW8ZcFnGBdAVXgXUBiKW4e202FvOSqroB63eIQLEPVljR5DI2jMcPwKW89DuhNkO2d/GvwQhtmWDqo0rdhpfJKXwb21FOySK5EBbdQlQBRDG+8nLagN17u4SMhoIWXV4Q6U+a2wokGHA4ss4pm+sQCfR4OLA8Rb+WTn2m4Ph124AcWPv1MC1jYvdjrH/aBH+ntFxrVdwd+2J8B/IFP/FsAf8UbwH9z2H+H/+oX0W7MYclz/gjLidHypoyapx1IqFWrMbs3a9sJG81WiTYzCnbbAMVcRvdUm486mtraaI7KMICbJZhtTsjCsVA+Hnvr88lcpj6cRgHz4IIGpwtp+tTpss5HD19YdsRSiJpFRGR5YoHyBacgKgSOZuEWgbiAzwIsTnzT7Zoi52lH0l5CEeRALaSJUO7kSq8Stx3kNS9vAfrMrcEJD2vSB4Bzxgul8PhOgOETH/gMr224hWj1A46X/4a/2if+vDw0phTolsO+4dO++R9YDvwJn3YY8Ae+4Q+ceDvsDeDtb8A+HfaJ3wD8swMRF/sJ4Pd0Mfq3AID/kltv2RDt/h61/rrm/7F31k+fuCv7NBWxn1qyxtWv5af1zI5vWuHYzcT3gtRRqOPPoAu1+rSLb2Nj7QTUz62HUpat9L34+rNbmiYSt494+k7UcJ9fD+ijO2y+60+/glddHYw+vIXHABZC6FsUmBPYMaNucx2ATzvoVY7vAN52Av75yCZ+PK6KH/auknIjfeGyWq4/9jwpYT2+u9Fl2sa2Wu2fBZH53MSDTsHMfD0IfJM7Gidqe648fGvJJucoDrjxmKSejtPoWjBhgPa4W/2ez69LS0y4YJExSvPcV20ZjZwVGbp7bsdCiWidsiOA3+jnAdiw4nn4CuRwpY0NBltOJ1q/1HT4OqqC9gsx8UBw8iyGfoeITHCi5/w0Gr1e8HIPUseWfmelwPjhEdgX+BJFYYcnsB5uqE4Uz9/2kS6rqx21AJx4G+z05QnO2+knAnB4A8hgQ/v0T/zw0LV+ZHTuHw77ZsDv/jf/G/61HL/+s6f4fI/b/f/Cob7+rC9r3Gi9TY+8+/a262sIYRcF3tw6cvWuZh8A9DMAcP/+7TW7vxtteOOrz68AECy5I2EronYIhnetO2/6sexnXOb6Oe0cLrDX+13j3duwjp89v6g/lve7Ru38hba+7Wd3Pu3uujrCzuc+Te/N3v4S/O1fXv0CWLD9gUDiRKouHcetgQtPXkEJ3+UFtPm2ipg9yEVoRoOrE0nb26i8z93Fs3nrmaPNp6RxYgb2csvX9xxnvtNuQ6TKikh2KXN0l5iOU5MZjD54aC2XHLSVIIKJOCmqZhkK2I8r2ZIeyACcRnwtx0fePPuXi2aTWR88ZWGabntlWDgRZ4kG1ZbY32WAu/sfKbqF0TaeJeE8a1URfRxe8eldw6l/Wwp1eKXfwzt1pBfeaQD+7IB3AH/CdwCf+DOAP/xfATvxxr/FX3HiX3JUP/C4kQSru7cWxT9DECvj+7YSLzqGzAW5uNfwOszPmzr5ztplxWln9YZIOLCvrZMUXVatsINGTut4qBnaoPSgvecSJjfRnMw1yAYO+Ax9OHLiL6hg/QxQgmL1oi3He3QPGNYA7S2TroU4aLW140lvSMO8gIUGFNwPCnVGN1RCMOzMsqOaGUs+om8ZREiQ5EA5rFZ8VIATDiRkALh/ZGI7M8cZ/ngIAuScNZi9s7Vmp738jeUBdH8m2AMEGP023Ugf+FGbKwhAWIOWn8YMRaef+IZPO3EmSaosEniH9oRPAEx5AnxPsOGfAPz7jJz9F0+D7D/y+UccXe+FuX3PhQ1HBYE7tNzpOPGgwbVO4jk1ZE5WS6iWrzlM3IXE7fQiZt45db5pM/LjcVQ0RpgWpuvDVJc2PO72E7GxhBfSoiQlilWs6tIEXlf3J63z047UD7ZnGv4wx4y+xU2N/REhr+6+wa21LLzpzkrIIU/7j8P95QmhOzD9G963YAFjcAlS3BlJ3jkrb0LoNyXcf/6rRXzwaY5lWF+KdrJIL49sg1ci2n10znWojbBrA+O0kqCFK8ohPS/JNmxpSRd6HoLYEAg3ASo5WrKS8Gc4vAF5wQV7Eqw2pIg8b3g83ZGuCdEIuBA2ImW5tV4o5B0leFlHKk1hrHz8jiyhRbOomTwpm9HISTmkHFSxY5w7BsUJCREJYgj2KT1AwNVGmbZh9TM5DsPLJV+CCmvVModXGIZnrobaQGU3euf0G077WO7AaasQks7hEq07cxyWO15Y/gnYgXeKdic+0pVo4QeYeeI8fvfTAT/gb387DPb2t38C9g1v++FtYfrDkVan3/13B/7p+Kv/xWH/K/w3u/GOV8vO3becNleF+Gf8SdLQdPKszEXbzywwJ+8uBnpymIWVavK9/Wlh2druj7saK3tp+7TKzLfOkbRqhyaAAjgeFNxVQkeO4IiYZdSrpu/iM8E7OvSh+mlPYAbf6c81eRZriwCKLntFTKoliGC8eu8lwbu78n9KW+uanbbsLHBhmRmv63MM/4s7nQbg5x9G1/LdyWNOO+w9roWuxLjb+PfPeNuHvQ34HW97229bmfo9fv1LXhEdiSSwyCB0merCvSziFJH0EnXboBs7r48XMixw6CPYn5q11SYscufXLdGgnY/l34/MrBCetL7UVes3PR1zPM2rzQEE3/PGsCdzrDHY8Pv0rxPN4aRoVrHDLSI1NrcaCLcK5oNmfSiyYEdDIB3w0J7iQdUNxaNK77Mz52sZofWF0wFqTdSdNPA8XbwSFFlmBRJdidppDuBHqXEKMZSI56ga3nB/J3bmRcY8ZwVw/0wZ5RQCceCN5TTIHvhu7vSti9aHKyu3yjtyG+FtH/jd4L8DeNtv+IEzIYcIuABO/BOA333ZAvxfcOO0ui/5fQiKndtEznDrRLSXk1KBx1JyQnWgHUZFuCo41eMuy1yEtQE7tL8B73Cf7hS1A/OO8Bd1o7Ul8QIq++XQmdvMbYKR3FyhqtM8E+9NJO+QbEM2tkfgFKnxJdCw0p+hNohQOxdX1TlLauHp3kxMsL0jRDirPyrQHb5wGPExbhk6C5VQ5aXnjA0Rs8ZsRO49Lide5n5yCWXSrlfkK8msqmWc4pSDzrHcSC+881v0gtFVdHb+xApcLja6B/f9SPzxR+YrP/HGh39HuMx+x6d/+B/4ZsAf+OHAB34z4G2Z1c5CgPy9Rvjf5ah+7ItdPLsvH+VG1022x7uej+XkUh5uov5QzlfOlxF9277UW+J9a1PxRfhBrVC9au4oTO36URu8JvXyaqds6dv2u7nHcy4pgdZwkW1YfHOz7VhkO/GFkVz6A7SRlJ93/fYb34YlrrYLd4BDjUVhf/5FQrHzAtAETT9mWS6Gc5/vh5PqNQr3fAQDMkTRn5/h9e+Rvj851Bvw097OLLAnWPcOVTRUQwZyBzaQNl6yMOjUDmQ8tfSW63z+Lho+U6SMzeM1sZL2L7wJXl7be5Q6kn0o6hBvKhHXblhTZE+RJYI+hrtqUg3zNeF113Fo7znP6Qt/vBjs2C4d1xMG/U0Mc5gJZ7rLVJSPMxvndSCGcBD8cWX/gmIP4WGt5nHNq5wcygC8cfhR4XkExZXjRNlBDSy0zp7RwZvOkTJLQAsmD3PUyS/uR0bFUgqxRFjC/2Gl90PD3BSDnR51QKTcL4+GzkB4YuG0mPEPAH/zM11vGQLyxgfex9tf/s1OAJ/4HcAP/+GwE99LpP4nAL9jwfEXv+S1u3727by2uzk8pplUU7rmuz3/ZRzNbA2uVN/AvKm0Xy2xMik00JC20P1hprzhlCFMeizuV1IS42q0mEDqPFZQivnCS+i25H6oRViB4Yj8DJFcC34U2Ez9yWE4isr1FkysjeEgduMG7GFZso5CorYEADjcrcS9JGMdGHGEvpTYYJgWVvLyo6YnA1KE/yyjPnV2e+xIjvLNlReFQ218f+HECccrF2mU7GWZcmfWVvGps7izLHI/uas1KoLF3zly7xLeDxx4p7Ek3GkXXv5Z6yGcVs1IcDP0w0/LDeSn/YYfeHvoP2/A3v6HfeDT/5x8iHrqaX/KgA3gzwb8NSGtfwfzv+An8Uj+C3ckj1DdEdp0+2ZMtD+U6Ur65Y5uJhHnZrUbz3zuh/KpJX4Aqv8s07S8kZjkTlzlVuNWnO3QD8UsjZVlP9dW2v6miMKb7UYwPe+nkfjJhC189+Pr8lUDGuDGXXsK/0NuTROC5+MJS299p+MrAzCHqJwj48fhkbuWyb7ejynPli1COThtAQgu+gnVik+JiW0U8AeA0/IMJ3zfi84MDWfa6SIj35/xB/aDbti2G46kiJ1v1y/CUptoxMEn/zVjrPXgVjOku/EEcq01TgO5w/uC8guLa30ZnWpUvag9/UqsBJWIJCrtxJrttLfABfwoUNdyMXdYRWuXYRESjXM0f+kA3xChjqClhQlCgQGvo+jm2nKlHIPoRJnOhFvjqbU/zbAPo2PRkZS3eVPPXtiBUrfxI+17BAWOXKSHn/F/JIc5jgW4/7B4pmigeXo7fOY1TyEv2vIK82fy9M+s5eWfsZjtWJ9ACZkv49kZRPGo77zsB870pABOf+OVvOsE8IFviBL/AOwb/kAE9/2O7w77M/4A8DuA3/27A25/ddi/Q+Qrf/zsgp3fXtdrP7fIL9zrf5HW6ytBkwt3U8K9Y2nvYBL1bm+hcF18FzqtGPs54QL1wfBMr7xDDN3OJ4jklw7+Yj2X04Xu3r4eSza9zOPzVVBDlDKzht+lC2vb0xPQsfFJWyngzRxEZ4ixgX+ZrUD7WP97AyK2flC/rc+n3NM71yfPDCZ/fwlbxPcfRziVxTsNNpC7/Q02UgLc6kidm4Ef6j1yhVqRNNYeNkED415gqZbLr5Tsmxddoi8kJCJXmeOy/aah2Ku9zU9XTK3ZSDztqrSD0IiXVxyLWEBlsfNMG++jNwoxNCSzrjyj/wiXMrT15t5zg1yZfLmyFOQkuHtmx+vn5e1bXlaurVHrCrPvUVLGMs7xSvZdCfMrdyk961SaKFdVP8ml1ztdW0oYQNQfM7DqsK/WhcOjDmkZi5ildEUNwNvDk2E5oYiwIJ1exnADzgzEYMTwKX8BpuN6A/YNB4BP/wPf7BOf/gMHghOV/c7+bL+7498A+E/+d6TjajotghtoceF0bpukrSRZhm2gxNBkzNOyWadY1DYzwMMnTjUf9XBJ+46XN51CEQNsEKAqSUaJct6LOiives9dwOhYVH6U55/dbJ/TDJFY5Uzy4zg8BMvaDB5q/mrIoYS6mVW1yULwZxHNSl1v6HoljDID1MlfvcYpUD6Odega1QJfOHICCAFUrC5iw1rynENdXAtiOfyVWkaPJcW/b0W53niJg2o+k+sgtuCRrX9nm43QQ2aPCKfad77xwudgBkTtXv4Dv6Wb6ivH9Tte+IF30csg19/9B4CXf+KbHf4j5YHfaxMsczj+lnU8iHb7Ucj3XKsPH6aOsH/0StnhhwjGzaYggd+8e9yUfPX4a+jjNvz7UrukrrS7lMtNJHApryGGPlnzShq6nMkF2llo4eULfW6fw8N28kjf2MtFBk8Ag94KMP/KgWjwKL97hiaCZV7eDcEgdmCj0EO/Ez1Xkq/TOhXgSuMEUi6g62o4s54dAHgpK3mThwZ3UihAiGAOAhkhM8S3Do6Pz2mIrA5+2nmTK/Ysr4d4+4+YI1tY+BO+Vx+Gdexn8Lcuvl0UGBzjCRiXK6sG5+LAw8zSctrJiPUB3PBODuhbmzY7VmFb1jwvRQY5mNloqiizsVo+vDdGCTPjmVjCr4KY0xWnTm0aRm2/7onKJpdPnKOpsKSv0Q9rDlRjWtQe9lruvaxJuQkAAEN65ehCHV7jHXIkTxDGvTJHMAVXuv2Ez/m+Ijy56eGdQSjyzrr11g1nkgYu6EERjkmZCsMA95UezaEOhA3p5SvjaduC5AiutPpYmxAP+W2d5dnAFGEBgcNOh504cXgk63o7ADvs098OO+zwt68F/IEfBvvAD19LLFjmCNHub/j6FJEaprvEiX//546nUTNiKFZvENbmN+/eg9x0+tyfvI0GReA//sXbu0MqPbr5kSNUzI0C4cwU8bPPr55i21Gwe+zsXRDD08mzz6OkzpwacTtBivPQ0uNfHuOib/czhwPvo0+f3VvWv8WxtnmpLZv5G65xxV+7tM4I3ufRXelQe3+vv9eqrW/rWAdww5GukP1dliBDc4RrCSVg+V5Ko+VFIj0T/fUpfDwxAuqb0FBB1Hda/0JxAmpfQrlTt4JeTfNga/J7cmQ3eNiNRNSoel9ePnWmthNxew0XKK9z70CtSwfanboVKEyZilBljzOCtygrclba6TFF9nRAn8mrDL5LruW0nsXgMQuGW9acdqHDy6JjYRPyPFeNZmigbU8xKo2iRiNOdILMlbADn+TvN14evDTTbTEOtqxO3ge6JCEMHc1wYHm4uZZ+aUcEUuBMp9WAFJanyYKn86UnHnPrvZMrLQCf/omXuMH+4EggYmb/6GVlN3nt9lC53Y4Dw9CMekvV05ukrIJOS3W9rEvmyPKM5sSalIsQgYYdVCPKp42S3gFVfWRDiKR2QyZCsU56GwdJL3ccBTie1mcL0tfBND2WnTB35ofrDhaEH14DBgvp3Lj+iS8RtohIYfPDM0JqAw4qfnb4Cy3ZUKibXATUo0SY5REA7ROes2mMCWqx0zkL6U8BbiQ+FU6jITrmlrYjz0EKh9UzQYoTb7xQNipLfuOdMfzwZd/8tDOdg47cDLCDsIPDFg4cWBV7BAM+8YpfdpZj6wvA8jA9E6t7AQE0lF74Pa9+s3Q0wsJvAL7je26dcBX6c9qTgH+yfzD395iknwgwCmjfFnC9UajZXVlPhfhegvOIlPs37HLtxgZlwHLrMAq9UxXmSRQ7qgcidNL+C6DRosLucKvqTdSyDuC1+Kv4x3hz2oB+/VPB4tdWXOapQIN8c1AKAHdWq5Vgg4rDOmmnffhTOpjTNLK3v6mdqI4VGO9d4YpVemk/9ZRgNHlZQyrbU7IG7OsEkXlluk4O2QT7aQS2/VrFB9J65U0Hi6Y2oSxc5q40MQaJMBP8Ln0nS8YznHBTzgmGQAwhTxehCydK7TmDPs7kcacdTt8I8kMKGTCPowJrAhfoJUGrW0SjRyLKIwP3CkgQnTH/YaIsuL2RsPUR8RZtKVo4JDzLhkVJhrE7A5QTjrrAroAUOkNm+9bmtqbweAQQ3iK6Y3Cfmpcs3fUJA87Fawc+8LZwS/7MkObY0KuEWscy5ykeSKGuZP4Dhd8xvZnFSXxp77FPYK2M+1oOM/tBQxkWTj98mZn56W+HnUfACcuAt39mrQufDiz7Zj98VThM8Cc389/XLySIbAhgp9gqrtjDfcGJxh3HZfuZuIflEs+FXxTwS88FweSGfoBar6MVxPaOGwA+fBfCrZOHwWjg3x2dptC2f8+2cWsVruaJTzV1iDtbMIpsdS1V3J/qQBjcUE0AebL5a1zxyjTUbfZcNkkq0hn0Q97iMjdX3rXy6JewNS2jNSlyOrzQ/K7582mOl/Cgz4OeT8ualFKPteKWb3i1+I2PjIjOp+0bli87KtNiw9vLXggviJdr3okBLhlw5lw9+iM6sOxPSPEOfzbgDxeOdO+5UgH/tSjT01uWHOQeRP3ckTW1pO7CB3nRPJaLS6YjL6c23c+1ukSBB96x3NMJdvhyuwvqkxBvrHBPW0S9egktH5B5cZ/asyc3IARmiDPQh49Dn32h5W+54ioAd0nNoZeEKMdNZk4fBBfLM5fDWZstxWdr5+HWjQi7xwJ918iD3gttliimxzwQKwGJ6o1ADNwaLwu4PeDvY4SdcJ6mwHi2G3Dwq/wuWymAoaz/qEi0T9DlFABeOP0zvPDSaellJ94hctpHfLM+bWrG4Uaop6z4XE0xliXa3fOjq9g3I5XkzY3s7yhYAxwTmmhe4pmDA5UzrjgMKmvTKFU9JXgO6pk8rODJ0pK5Yg2rAIlenlbWJaSFwArLC5OGiWNtO6Nu42NLZLT2DkCiYfFyBDS094JobuniEsNL646XM9PiENaoE3njgQNlptTQbzt4rHG+dkR+VCOo0ZvJ8/4qQEDvxkQcuuydog43dcEP1iHpkbCkKB1OBVgsnFpJa1ZG2x5Z5ztJBw8RfWdCL3PgDVqWAmY47C1c6Z12I0YqnThw2GcZABqhi18RoLHCrpST8WE/sPBbHu38Dct++I+gmxbn98H+bHKq+fOnedL+WV++dYPV5ZTfi2jLe6ln+RZhdfc+Bxs66B0FpVumFr0v2H0/dIVtrVUHorhXJl0RH20r7mqQ7vdDDPLHsTs3gILkKwSuGw+PVr/xOFGPzrJDYXbtYb719dLAtPHT27qE/luwQsNFXvg8AFsXS1Qadt/WGQkrUCO8Hzyz3I33AEQmBbzty+X55ectnmFe/C/nDzTV+KHc4mNb8vtAKzSQvCi1eb/D61zmRGbIgkRmVKWAD7pEtEbKMz4EuioxHRN7FSzq5aJ2dDBE1EUA9LR2bdpXXvCqw2dLQGHGWJd3H0XAG1wqfAPMwk+AdyhMijNT8Rc70uJC0a90CKdCTZGxD2Fp/aE2UgDF3ucFMpkX23n46W4oJOTw4OfJWQ6nbS/ABW/7U5StORsM74OqhlN+5Yi1IzCx+wYR8rBTsxNmVnlYYQcQBNRzRGD+RobupT9i+Pt9mtcsB4l5O8+XP3Acy5czUjbCGT8R3HBV8i5u2iRTLipK6J8WySgXHD8cAH4zs+8WtqQY0T+W+N/fb4tOkPVEmKbw5/rehY/0NroKjXeRrY4l/EGfP7daHc/bem4U/X618c83pjKqacQGEP5L/gnyjGmfeD1EvdPOtplvwjE2r4Yy/D7UtMystZ5Vz5otc9M0X8DCMliekHjNnC41Rqkjs3j9ZoqtuHL1YrDhFXFevCTWQx7x9qHYZsd2P45jlLCXr9c0P3x5yXNUDIjQv/ks/11HpJX7k/3Z/mQADHarI83N5dtVXLaC6k1+uaNv3W0XbgUGp4uRsRYta7QUFyQZdu1YBa5Lw2lRLDWVMzlAt6QhBU8x8mysnnmpq0MaLXQkXylVWMPK2/eriEqZUgv1Cr6aCz0YRAPGoJjI6eSA8bSKRd3B2+6koEjEphJ9SljXj1KZCTakT3zCPTwHMWUCJ9oWYqDZguVVjnxHxy6jfBPgRU5FcqmKlUXrWMsjVJEzvUDoe9ly6k5tjYyIXIZVpDc6VqP1Ie6l1/wSsgKsyl6eYYbFbVfm/qY7WayXAMFrk2Wi5B8i9vX+aDtSpTyRVR4i2YKo9JeNtMnRsvkEfgg31K7W7eCzrXQPOIMviX4Uinyo/VJputuXBNPxpdJZp8pebbeGsADskUgZ38s290l3IZ4eRPUqnjahigrisGrF4Kk+tK6Myz2rvUb3XeOyCktJxsa2eFaZvC1RO0+rSvqGcAOJkBzCmyE2j549G7BGSh91/qsu3xAyO3iit3eOVwv6EfLgi1k5chsF8HDagRRg7RBlH2brLMq4kiRbIWdsyXIPXA0Ym+td6TTeWWJktfMEIM50eTpdU/67McS8tncKeB/Jk8KL/tPfgIV3A1fEdwfMv+e5sr8ANlxV6a8/D8F96O3CBT79x+/e2ASty7PjBLz89KIkujV57d07M6a0fRi8ls0pqbA65AHo5MacXNU2H2KBQX7W5d2NthNsLsK1lZPhdQMc8AVLQOIJYIi2vwfRvHN91SrbhvTTBYC7MmdSleTGRvQSgGhaMlvVhhlFO+w8oeFlJFNbpt7H8rCGTZvXU+Kw7qFk0d2e/Y7nz9dhFJ5iCLVqeXJErxqB4XnsmL6hT5ND9WALtOyA4QzFr0GfaUcqgZBimZybJaA60EEVqPvp7uq9WV0yHRHeUPGvDcNkUpEpvBJ1+UL6P8zwgrqLajUbQ6FLXwiow0CAPMCF9JZAePtRUEkfC1s4xDiwsGAt8wOMuIXTgzG3sFktaUFe1M1Etq8Z6KXm9F6QHonHXYllDp5LRkvSWbYq9e4MT4UXKOyVk2zxiJYIyDXboy6FQUQIx/Jl77JMHQas4+3Lz/JQaFvUWfVELZGQa8Whm/j0PJEiRfUF4BOfyTF/5Dm1Lr7OP4lHchnp3hYmS4yOm9rt3i7TIbY2Edi8TZ0uxxyXumKR0KLCZuUiltgmL12pRPOk9uVvaYKsGVWLtMSbj2hfPl1qDRxuiYtagPVXAN62Q5ydsae0TIn+Q6514NMCTwz/5SMFTzidjgwC+xiFN2pEyyzOd4V5b6wlLkIWlhVuaVve7r2rxvCstiJFmta7zEPRLq5kROAoIirVywReNX60ExG5pPmWMctgXgfjtlw4idXV8g670FHJncPlNFJmBTdiCrRwkP3ASo+GcGb9wPcgQcfp1BzD3+H0d+o/BuBHJWSLc2kBnpdOQgTRyf+UPf5J8hMVKoTSbsIQV7BvQJ1vZdm4cwlc0EnYPpJ4xSoOcKt/zbIcWzm5Eccy9qTf0X51QuLTJO7bKeeyg10s0UR3mlw84HnVAa+s1fIGMbDsBLPSllc38z1XrXHXcB9gxiRYLVT1aNbiGALr7lnRTjtX8Zrz02PJwL2mmQyzyNMwaqZrDGrhVB7yIZIxijYFwnLzObE8shMRSvlIKObwd8IRKcyXQ1Js3T7TKQpmEpVPWUE6wpKlRPwbUIviSx2J1qPdVY2mzz0ovESrghla19C35zAWY/HgO97uCrnEd+cgL/onXDLhBA5AmmCdfMwp6dTzC3dJuDhdDgUbWKLHYmbqKToFVe+vWseEcLw3wzYc7gtGjgfznH6rpCMWQJQEhahxjdaaYuN0ETqcmRtWIzIdgqxBGZbpwlOAO8TX0IpfUa5wbphU4sNrkRKJiZiHFhltrTPBhrJOJSHK0feSbAx2rEhXcqTVh+aqlbamE4cftvAGymxaDkQ5B5E0H2YVJh52pBdgyxt8CO54hJBnH+sT8B+5heOUc8c3/MjzZH+ziE8K29J35Ln199tIJftdZb/bfnfW+ij9LpP2HaXuo124uoGVLh78mGeYr9oZsEemMv6VAmh7oXNCditM01qfrozjTtFQfzqNVts+W3j3fR8J/f4epR2PwcxP7WjY9268YwRn3W4aAzq/11OmZcsxPWgr0fkYd72Md3er0NPTy5a9j/36++jW6V21af14tFEBgB3vo59naW1RmpasuPZx+O4cU6140JEESriISNSR6WGv/MhAzUEdNlEMZX9atB7odlW6t4tbFDPoOuSlPRW47alNu8Y2KaBNnehGbLUKfABFSjL2cj6lN5yZanRt2vIqwiKluAN2io7U6J6E2GVvIk6UfoM1yH60uJHaSzlANc5o1Jy8+OXmtiixwZ3UJGpYjQIZkBGpOTOwOCUitCo5VzxFA0vYIN5d1nou6z/8rDlf253IkbqKpTsC6j4CMvAVwl9a5g6ssCVlKGDbscxOD3hsedqWwjqUVqLkQPhmkcE1BLIz0yzHSBCUH/ZBAN/AIzfTx8GQAX+PG8kui1rxtxKOLtvLL7+uYexem9Rr8Zs835trxArVhatzzzmA3KsxuM99IIQAUCanOMbkWkiZyKul7HAlz6q1x/ra9ZTxrGzdAnCUKW1qcl4Otz1VIUYJ6ckAcLHRSH7XI7GthReY3KvFVR460Gm2IKLnEsvYUYs2liPtV7HhYuvNLHkV8JBLw7DwxuGRSObE4Y5V2eNY51mOrNxmem5Tw81x7WDmcOdpsYaMk8Ur3U+Z6w62JCq4NL487yiJigRcELV7WWwLh/myFyKumVrjAKZaA0ji8id8txpmfwQbvvYInxtsv3ax0W5vXkXACRVIG26giwLMvVGyvRybpajmkiZVZqIbAAVXvLOePgtpF0418969p6JLe+f5tJyQPZb1/gREEa9yc+1lHWAiSxQ0EW/YZRIkm8YYE4IQDWKsy922wiy7jMYNiMBQCM13XtsPfaXK8xQ2Haj0+RUQoa7/fSLgMcwt2prFo6e7F9L/9yZYRrhFkJcPm2fUcix/yK/fsuAfZVuqE/umzeduafQk20aTlWbOl1o5bbuNBi2kNOr9nUVquGBnblCrEGFlSyA6tCfentp3lm2LyHLZpdowZfqkjAWlWKbg4MYM+NUI8vo870mhnYjtcbh1TK5n9oHcq5VDZpX/QN6LUzosT+cIkazjW2XcKXgWhysRLZ4plAohtlWgQqrjp8/9BVRqFzsz5ThP06VdL8Syd1L3M/2VQmwr4MNOD64xnFZz0Okgy1LhL19+rkhsTD0ZAE4nLsjjYOIcj5VZVdnHJJe2/ExED2a2nLHMC0hPh08cfnrwu9MB2GmBAhLQ4hlbL3t71AcHvh2f/sNlxR5fOK1+7aj6K587kOGeG93Vf72ybsDX6ct39VhYj78uLVUvuscUTv7g0LnQJoEbL4EBNeDL+z/7NNg7S4hSdlfMzSTwk8900R1wzsX9c/9k9rgbt9PzUurkBn3tFF7Dz/tQMGHOzCU1mb2393+eiuv6pHKva01PK+BBR/Kf8Zj8zr9LnmxQvCT7MtpOX4FSsa19qrd3FXYQXQdiGGuxzMsMjAz06B4sir5dA8FyEbi2cXBqct2Uio6y4CrM4ZDakTX5mPwpYHNmBVdbb6RKqPNee5kROcEyKvesLeCK9IQoWjugi/Sd6EPC3sXFOCdvG9VU6J0k+XKSBrPTCDYUL7S28HRO907KlYePheMp/XixrPMEHW6Ra8nCKJuBhBaGVwpYwRc8fegWCFYjnFUzpjVz4Blh7wMve+MHhT/jgZjRujMhhRjNFxzvvPYJw4EPOMzeCe58Mj2AORyfycX4+Q0Sar7zmfvtxeWqmeKuWzE3TcnbtfjvuVwvV++aShnP5TxSRaag04eTUYQR/71ivebtMa5va6vUryglk5ygVU2oUwVlibX3N/80tN6ERTSdfCb94Zx1O9OuRAIQlItsp6UPmMHeKelSJ2ol25BCcvlYHyngxdZdqepHYLwXJcutEs5JWOlQYUTx3C32cWRjiDgnryQwZesDh+0oTYTOse8iPpF25eVMkXXaC2dSuCg9yUHicOY8noxAxTtWRhy0DCbEX+kLgZrGA5CcEG4zCin8HWLcXnjjEwEXRF47t+84/O2wl33zH+IB7gx6KzH7N4T3wy3i/5XTkKz+2+/PV56jQn8m2JwXoc5/0sYRJjEsSlMDkjeEG/TT53h6Ahe+AQnak5+NHy1mV9HLhwVnFyXeW8lT0HkS3yRUbReGxlN3OVppE0rPgb9DCL1rY/xWOxOBCTO3jiZKK9flTQaUTEGsrVlTHL0fibjXEUb7tTmiEqvU6SXghzxrMNjH3aIU007+fuInImyVAFebRiny8M+DZH0I6qniU+VNi+cK5wnKbqCbvQLDKhgauSapat8lJWdax7QPuSBw5fFF038otY60THFRIZ+2AjleKU4SYlfVv4FlDmdvwkipSECiKXyhHNWD3Hrt+hhOFnJSjtvhPO6EYQyZsgvI6FtDi4DFu0pkzF4XxehsrN7c3mDLD69+sLMIRCwsRjFiZx37bhmgcdiCH8SCQl4/Urp3+xyAxHlgAZ/pJ374GydgPEkWAJYzF2qkiUwoPLxC/PSZnmvhADxRO4lGcrxh/q6cUo7TTg/o/R0jdnxzt3ec2ebfYPgx/LY/1H7T22OnPNwIHNyp0ezvVzgc7zj1mPlZVVYnNikhvkreWzIhDDNTV8sq8bJ8pTSru/boL5DzbAMnHH0w45Q3VNx2GgPqoMzQq2g0PbjsRLwMOsQn2Eazdk3tXrSnnXmmfxlnDM7N2wm8UGSg8/bUO7WRDDzNwuTYgW1sKlzSesLKZ1HfqHZVBBBwltF+lqnedQGZvwA7c6F/83cupNCWOhzCjWhaaU3lfYhC8eKQZzjwCvF460v1gSK2eXh7w41n+AFh06K6bXD8wJ8cAD508fa03kHi+owkKNneu1+SshRlAbVnHi90yJsLrZ8KzA5DNA9rH4exUlHroWLj+IJnOkcfrzCwj0VKSIbZ1HqERJxWQlQWdNocpcqKbZyNdvokubFWNky6Vo5L3UNQ10EnhZL8CNSkHOiDpqO0U5lY8GkxOUb8K2uhZ7dGA8fnnZxEDq/MEghArNT4gkq+uZkW+xDaq0ogDmTGvTq/yTrs8Ay/dT+MSGf08qy+tWFWt0lC86V/LY/xCstQ5A768LOtbFBB8Vu673yi7Ev2w/v+d3x6GmS7Y1x4siS9N5TCErRs9HPW6ry+FN8z8EGDLqqO0nuvVie1y/cit7Y6ufFYRQmtaCnPCxWQzc4FUpupPiaAiiycFvxa1PJyNzrScNvKbjvDnhUYoqeVe8gHJcYBVK2ZVzzgAfN2Gk2QIvvBI8qcm7aMsG9u7yIzzdU4vh1GTvqxOjEXEzWK4OHwCFIAT4ZNozZ1tqDQkuIxHU1pYi2xkU+09EGJoyJ2c0Mwm5Inl2E21dwoRgeeRWJkNAx84J0ZqbxaEgEYy93ChsQg8bN6WOsx43aByGH+ici5ytH8SNwPGZ30G37QA+NG8QbG1aeo1ysX0qGZd9ZtGX/v585SpEvx+Wl9UoOotZ2eAOew6m9PeR3/4bNEm/01u45jt0pDm6NUhRf47aydSaVYhdZ7t1kXIYr/+nF1wGwVO/z6JrxxB1uks6+5AW95f7a+ni6ett/dXVqnbWmpem+fE8qx3U427y5zs2NkuHiAYM5j2Q7UrMsM3L5rIGVrB9YDx4PT6t0SSOWenMshcUG+va26VD5vllS8xWM9zFJdP1VfsvGtBE+DhA3GXTPQVyBpqoqnWYIBksAkr5Wg5zxzwsvq0/XldDm8nDYd4RHu9GQQAYuBGZP/MWgrQwwbLDeMs348haw8zbVKNYd51Bkb/jTg1caBEu06hPCobU/GHPG26RNYsmTz2+T7XsvbODq5/dua1KB5kCEPccvKb5jRrF6RtdGyBikCtm8Q5eiZs8NPUbsO+n3Uc53WbFVfi2+mmBia8FluQY4AhkIHDBD8lciuOfBhFE5Pcm6ZlU8gE3RVKhT7hi840tSWOBX7tcav+j/clOe4ehlsgQ8zSHurJ35pQIMujR0oyW3UiJfPun08p71rDWRJCRJbxLV4B3oTPcqledbbfWBzlzgEV2DcQ+Big563B6D+27+KZ0nLDgnRHiNwC5NP6Djg5/S19/NCnePX4e5nJtfCSIAVQt2E8gEbR3Xd8+G+f/+r+ZebG46jOFBsioisfWfdd6XMsqZf3cuOQ9/6sI9uaV3/MdsU8Ddut9JVvAsErK8ljmfXAvbjQO79wm827Cgryk+/Y1cEjtpLKUMSQl4qfSr0zlSWcjAln4OETBDU4KGRTZ/DTp7fygwbmJ60lyp+rhceCtC6GHQrlc7Gsk5L3Y+6At+NvnqGzTmQR2pdAAtdIjRYp/HVu8ele/oZQSCe51mkU1/PVGYv9+GCii7OzfxEQyByqqAfaBihyjX6KMa5VbWuivsGfNCc/aTInO8VETTG3OI4sGQs3gmsfBoKpcvQvxyrkD/Ci+FMaOiT85cB9ZzTijUC8JYAls+WPXrDPbsITZBboQF++qRzFppR+GMfjW/Gme/N1htSvSVYIkMbuOxW7tRFXC29DjoAw3PJc1XTR4D2otheBrrPFADCboyQa69O789Iuy/vcQOqEKsxt4fVqAtkn1TcU80uGTf4Wwg+zEiaAEJFXdHWZpUxtYRf5jl3UnPzMhYYEkhofM4902nFDOeKP8t9SOxsFtkjoiFLbG+LpZVsH6MRFqaCNlIQ8zofkCO2mOWhtj1JimRD9RDJVgESkZ2C8P6KE2dBh9ZEU+0zHXOCEKqPQ3A180903e/SL9xiS33iG2C5/VLAe/Rs2DeAPz41Fv6TzlQw8P39+zZMkXK+MYWikzJ6Pq3nhgq1vhEo96dmjO60YSksEFl5Ggy4tml+1k+euAqajl2A295gTCeuYtHeIgUe6p4prKBxr25ueqasm9tTS+LJKzzBUnch8qyaf96zvcXd8r3cO6Dk6ulwX8usLUS9q5C8vWXfLmnkH8GGJ80JaEOrKdUZdvzWXLyB32Irq1hJ1XURBrUlXtVa0TxN+digROsxyVHLx8CvW8io/+o2kqlxMkJP2rklNDGbhmRrXsEAv1rsWQtTqORRkSksVPiqB2hSpiR34YPxUPNGipJhv6pwD8vL1rN4MB1XFhOMcQqxbxBCIQcS6CH9NVbybqbUOjyBFmM5qfZbr4AlAAjNBWvwtQVkcjFy5NAr245EoY/lmFG1Z7CgklpvDQqHLSx/Jf/KA9vM4pq9F3M2ENIwd3uFsB3QeG+gslw3QA6kdcm/3ki1cE0cRXojjUUlmFouDu4awd1gFDbE6QcSG5SLvvPFGXa7foevUecpKZ1rrg4LDo+CWoq9cc0j2boTuWrmH0+P7UUxiAp2GhRF2WkUrL0MuGBbE/Luw1EolZvjI+NbSy8LvcUM5p2Asq1OlZwMDP2uETcupZe34B3e46fFObdWrV91plMgba2xQexMTSQMhxiIUz/LDdFHvRxp8G1bV+clCFcf+mIccIsQ+tMtEwhHy8IKxfjZVSoljyN420F7E+icxXlzO2D+GdnsaswjKunA6eYn4gC0PqabIrsbRT2HRwRtyKgFSoTmpdzqWxtk/97P1+KZX/6lSp/qhrXe0++or8RVv6IG5Vu9Pt6Uhe3TxXLPYAp0noNL+4vy9NJsoGPJxtxHgJyRW6x54F5Tq+hALA/aUWTj3AI50UIv2jO11t70s1U0QG6wxEQzRyP3s3S4VLmk8w3PrJiabHE7n3CWkudO6Kmw6SGuLVuY6bhm+86axYRfqoezrjMUuI77xQHg008w20McDK1e4z2RLQcFDNGtGdvI4pnhIiSL7TIEd+ZO9VRr+a6SZ1W6Ci4tS+d9nlTU7F/aL3Sipn4gXcorKdWHmk0/BIpihbE58/E7w01reZViP5YiMxURRQtxLHbYKWWnL0stnKjDHPDFAJyEGVSSl3kCwpthAf5CBhiaMfrK2t9PImIFQbMhxpV5a+bJQ6QYicW+uqw8g5UHi3UuVxEeAVQayBLRABUDPeA/BHmiIHiCLtLlydBb0Wyd6Vfg7tESfxvxUW/fBddamQKFUUnesUgGX04bEw/1dDtx2MrzlzKxvr0yhP2F090OWxmsdtiZdqsfOHKK12GZIe8Dbm//CM7kQPrd4TPdbnUP139z8zyHLOgxLduWuvm1HsuYH4FGt7LWF28SGfLbN5FLQ5XzBg6eWqc2dy17F2xZGi1mIZzudij9VackYPe6GD0Slfk+jvZqE5pcZqrmu5L+lKzrHsT4hQRaMm78mJldn/za2+HXao0xnn06Eijg0StuCih01qFZzhVY2K4YLGPQH4CQi9MqoALU/fQGzWaq6yl+ra2Mq1Mr/09qNRwoG23xdPE3EqfeBBR+XH5PXa/sQyWCtdpfZWqPyKQkh0wHCYqyj6KZRpCdJSS/ItOkr5430Dy0DuQwCrTfR9fzeSZ3cVG9u2dJkVsNLw8zzwCUKGPlKYllf6pHdbwckfsnbjA5VbTu3Xkqisj17Jq7q69C3GGIxosCeNb6ppDOQIg8YsXSATZMKMxP7nBE7gUxwguXOgD7XNmHClzMFUIel+d0LAIFGdRuVYpzm9kLp7/xYe/KK0jYO94MF9e49xFeePatN5IG/nGYpoDu2ONiBSq4WIDYgN4krQF1fWWGk6UZoTBEI6wExXIapeKKNrNGbvCqE+mI1OYTnpheZsGc6hRPTgqdsfyqx3HCkpCHbFQ0N7Z5p4yk+pCoV9MrWk0K3kxYgucMWupraYBt2KaMTSnupTYiyJz7zF7XHtG5QHq9phpP0fHM6OJMm5VDs3KZL4H/ejvZJgiyBtiB9jPppDIhtp9h9LXA/dxfgcjJ8iL2dtZmc7xheX4tk8G0vFHuSU40TgldxIktpyUo4mvf2c6UFTJpPvDCGy6k4tNOpGNrTeALp7/9LRJ5RNNGXO0nE8lcxba7K1eA4R7tWzdP3n/8towWLu/45HyqPzOCdnM+AidnPnN1SeK7u2i7124yccMFJXnmOrQfVxEpriWPjPCkcWeWd72uffhifIt33JQsIt3a41IpdP6CAFQtYWrlm3fuHHPvy5j1PLkI3ffy7rl7p9l1UNwT+5e9Kv71wVF1WstoRyp70odOOG3sRW1qgjWoj1R3tdJcBKYXp/4mZd85VDLhUvY37UpsVKlBMkalrB9k4SrkzS1DizopboliHLKROv+sxRceO9bKr3sqtMUpKmaqQRLREYoPhPKdgpLlTxqEUvw7rJKf0Gk2h6kcQXPMaA0id/ZKw9Dn7pFrgBYeRzqStmgGX0yelS0x9wqPiAHNsAbfz4J9l9DL+yhaXasnuW7E8EaWbZRYlC6xZIYCBi3nmqh0+ojMqo4DlqfKFue1w4nctR/iAqyPfkkX1+Mz5dBwUGUAxekLTIxy5vHKATvEtL7wxunvONyyxL049iXG8lulNhtL2C+K+nxiwhFXZR+P717Tcy3cgwL3v4uy3VDi1mS+asFXngK8rzD57vBJHwtH2/pbQ1xljXL/WU13Nc/2+sMdvXZs4ne3nEmB+/fVVv81f5h1XzOF//yNu/Y7k5U8cBi2c23OrpNXZg+FT0xIod/49f6mp7c41UqYRJSm3gyXX5Ug8irE6L+7qNX6Ty8kMbxB+UOXoTyNJVRaYDD6tfjX7myZDzYArpys5WQGRlhjwQUNtIOfi5dEhRcHE3LmPyowIUtqV9Z2diVsEimjrL38soUUazpULwYhDKLIcPFIHxk5eOJQiNaPvBkt0mtNcgdligOjJxnlhSDy1QJj8IR75PJxctu059NHzwokcKCgcB5LtlpFbEfHFEpqysxQdoFKsSxIKQhfJ6Oj1pVmzrTIhhHCDYzFfVeuChp76XdXsIPoUa/axI7l5m8cGYp61jvIp80Jexe65xmSnnraRwX3xWjR/PrGp4fn9yUdV3/TLHIt5MhWEJACgFBR2nlW/6htMoq43bjzk4u9t6Se2UxBL5G9MqHGdWsri2ldiXdxHzRkEao4LVvm8BNt/7m2oUgKgCOEPG7hOoAQLSoluBJlveROPL2qrHTi9K6ZQp15n+QKwb3KmpS1MrdfiEBH7reVgMGydtNNh6ZSzVEOPNS332kliegid4JOzaOWLIKKVmWuUrgvRh5H8gBLOZlvGDLJlxxbmgKcldsQ8zKciNDxWI1n2qjM3VbtDmZjPTKbNwn+gYU3voF5v3+USHqY+1rh4voCAD/TehQjQcFUNgnmeSEfXyzf2h7l7lFb5olLzm2l+tD1cy/UKaWY99UHO3ZBa2p3Lbm3C5m447SvRAfXaTskdACSMuS2R6eYlr3e23N8bGbS7oucsdEONXejRUOj8BpV+6Q17dS6t5hcYx+b5GlV0nmYZ6Y5QEWA+xE3IWLbG7y+51ilT346s1ZdU8CuWo/1YNJ0u7vuIo+AfKiSEYsDfvBqo0nh4iRhld0SKfRdRqKyCHGRrm0Txd9tAETcKwWYmZWGdG/oLdEWcz6d66DMIiKedCNKOW7n1Yz+dN3Q8T2OGDYwA0JPAwVCh8epCV5leVuNph2AZyA6U0RRHC2wnJUsuFVcaC2SDhYvhGC42MZiW0X8jbCCOTlm+ahF+pEFSHhB6/jlJAu+rbKxH1TprQQhyhcn6TXFpuxI+lfQ72xUp8kEklcAtFKZe6XjKmIHtM9cEY7kGvBTErvwbPPEVa3ia1PwPc39nVuVpgo60SZXEg+6WLlHr2oHPg12uNunMzXK6ae/gSMg8dNhIf1yEb4AvI9XhAyagt89vR+6JeaWYtdU6ONHXVWfP1cvuCrX5jZYUgND8Uxa4Te121ZXa2y2PZF6yE1LahXU9ajJtt/Zrot7nSwoKYnb955blnvndkizUsJufxoSi6a2MXo6A/hmUcNW5mqqPFgdN5bHfsMqF1C25BB+8qqymnJ7ejYWPdyotbWoXRspNtoH3pHNbyx9yLed08RVFQHbjhknKWVskWV2Vuz85WVhUn30l0i+fNjHes+eSBo0SO1IByLM7YJUfEM11uvCqW6WlC5jFfD4reNrjZPh/R7D3qZAU35vmethshfBkTbZhguTp5lWCkpnYB/reXLibK+EzrAA6ObPI2UcqDMb4M1xgQ49rDvposkOCKitW2kTaW8g+yCW7WKUPM441/3u5pNflN8y/H2O9SruFrVM99n2MUCacc/i8nmNWyD9o3tr6bI9exqNRCJCG3b7USN/Fb+MFkFDMyqiFfPZIALhsPQhdwCrAuPO7GskVzFE4uLVC9iAdbziXT8d+LA3Po1aUecV+rC3w/NYF12GU/xrHjU3jV+eH4JeTTOXbJ2lx26XiUgphsti0kAMefe6+nr7UtJqpd5XUOi60xqWxqWWd/poCgXJikMq1WKBEbJ9l1jjSoLQoSAEBljoGyjhUHEvGz4KTZB4gnnoV53UcQ1FOl2S6EqLQux4cnmPA/0fRFSlRtNJIUPRr5P1jDJLHu0VUA5abIvghnSIyshZRr7S6bZsTxmTdJYH/nLm0B0Z3605beVp8J4OtwPvOmRsOfAyGPwM0muqo6X1SFawEhkH0tdhLQDE6+yFd0ldvQs+8Ra4IBC8L86QfYqLfbrqXzw37+1eBfuzKpzME2Sv5apGpjXQ+0DyfsPHEVnqRxfvzHjY1uy0xrDhKz33rf7N0iaAhcv9J6tM2z/Oi+1GrFdq73goo8vpv/tnPZbxK5+RHKtnzPYWPL19Dt5zz4+mxei+fmmF+Ra7uqdY2b7zff6312Nytz/2wSS6RPpNAvt6YexbxYZj6XyGFhiydy3Ii3MwvwGDHVwsQc1xwtBNCTghDDZ3k0w19A7iZIo0TaQfW8HfDmQAXyctiQGLhIeaf6Kg/eIPzOtA11ZGM6VnQydRkdiX/jYFLkuNivyxgREVjelFJyEaGRYXXSSvmKTEe5g24TQAGi/lwgCckYDM2i52JseVjV69aOmg10vCUw4R8ioRmHmchU4hLBlmB0YYPNFOl7oy4YoBHqfK5upjRiR6OhQfskzRZUAwlNaBFvKQsaRnhwGfZNcIP772cTgBC5etuHs6150b8K5Aww/AkIfiMFp2ZBGqYRggwq6mTyiCGtC0QOniby2oV5KkKvGGElKUYX5RtxaW8v561MC6saKyG9wlUA5oSKV7kLG0Eu9zEctQGpkQqyW1y7abymhOFyeVRsQusymUwr4LHs4voGpHW9FK0YknLqn6yzOTKpNqC3h4FSmJGl+jH9wqsW7PdEvtDZmATaVLQUediT2PNqwTliBFHeFm5gt5FlLpRxRNU3RNYnGYZ5QtzLH8BdqwLBBLLzFPjcO+ALxSd0uXn1QjzlqMbtyGr9o6Lfw1PB+CYArixpLcbOey9oG3F9iAsTivGtHfz/ljK934hLsu4du3Hn/vrkn++J68Y/vzAxYobwfIVpq5W3XjzNjXSVT2ds83a4NY5NVWa1IBFKHFlffeBbHa++WYgtDzMGCKnoJr1sa6e1Jrut7pK1si+mzNQnr8DciiYYj0o6sneH8JTT54lgSAXuaapbs+DDaPUBnq040s6ghuUcU7YgghUWPQZp0t3PkvJz/xsWzuxMHL095KmrqY0vymLXQR1gT0rtjT4hPEprx4U4girne0RAKuZ9bf58we2a7mbdW8EhOpQ0mUFcPk5yJGArXFfzlUG/wh74XNX6eLan1vaE7SmsJwBdLbOFs2QlIc5h21BCzrzOGVV2KQgpL+chv0SXjNdxKoKDHuoJ+DjJ450bWcLQdeOOwsEKOFuhiZHonOgVoWLiKMpRfW5rPwisjc6LHBzHkcGcLt9Wy+FyekxxaMXPGMKLJXnTjltvLQGQurkn0AOPEy+Okvexv8wxmi/vYTHwfwdsIOH0rlWz+4bqveqpwGk87ffaaK3Z9TqPVuIdItMIWdCU+0HWVSYhfq35fP9sUWy8/+4Zv3nGAC3/3M0ApvuQakVNp5Yk9EyhEKeCKk3pxHru30h+sTLLHuT8Y7PVruR6sd9uB0K73G5MUUJHN7NBeIMx7cNyH0ah96bpMYEZJnKB9e6aEw7Tt7y/Z5mDN04946SxJq+/S54UhX157hj2deHmlTNW+RZQ/AuJbe/KK5UYMQIPX2bWk2dJ00+Uh/OBELwLNhVWyqcxAweVAFsXXG7xp300U12D/5C9Chc5H2EE1z+Yf8xo12nTmR5TUQY0EmWQktt+1YJ54ze0EWt3T0yPzM4Xgxa3eFUXor+6L1qJGdXCrtL/SMbd3La/S6eZmIssFy4F3SSMMFjjpyzGmL6hRdCXSUrnGUhPCupDWV9zaBdCD+nectNhc6y1P0ZcGBXumMSg59lg3zrLDIyBUev8PRlSWGSytBCviH3YSa27YNrj5xE9wtFxsuPj6jFEKkzxl0F3+v/MlYpukWa5HLoDZ+Q/OJFkE7vpX10bbOVRLTtLxJTgpgup3LDZWCTic/tl52Bj86NC1vOuO748Q840Y/xnaS8ch936BK+aCrAFhbOp3SLQwmVvQ6VJHyzisB0cp7O8/pKyW9hdG2Z2GAHbVpCsRYhavkhqSXdyW2V4+Shm8sx6ACTpJP0nSaHvS2PEPQix+lTQ2vQMzcbflHcSOK782FmtMc+DyWwz/QifZry9DynMNAOKRImEHBC4OHLTCMw+EudJOOa+MAmC5DV1HuXkvCw9WFuUkf3lXls1rSZfSdq2dgf+96xEFIGTsoztUy8o1fjIatapnX/3uffg3IlHu/d76Z4o0D3Ceza0LBMPPn8aUSX8ijQZywkhf5FSxYg8SNfm79b7MoW1kL1Vvk6iwaOlMatd2pG2vGuHghImEOzTW6qeEK4Iig8FFyP6+r4YX0BJezj1r89FED9vEo0cuTj/VvK7I1wiiiDAkjQGtHLiXqVjJZVNF1Sv8s8cynpDR+TbA2u1SBAGlT8VGLBk0IDaM3AWC+WtHAcoqaKbdTmCyOlS4mcOEw4efeSruPTaeZ92JA2q6TObJdfCT84OGYuUVrAgrwdx7bmV4E8fWsquIu+9tgget4pf0niUUB6m4rU82WHzYS0QoX1nEnh8YyHRc90qnRObCOFBg5Ed2K2FlA2WS8hF4yba8IWcPZR7I1sGMLFseYVjoyhkyUg9eiNa2PCAgycS4AtszcF3M4ZFnJs2MSwwC7Vpr5DQ6LAIroxHGED+5alD9SzvI3wlHodbwd9uEfeOO9CJa8HX5Jg+QP35Xif8FLZOtdsb39rb83jvSuTbForv4O9y0Ty4/auJ8q+wXc/34swtX0Gdj4ssS/39og/WP96jWo39m6eWd+jpsrP2+V2vKi/H+0J3z/sDw04LYcObtpvDW9NW98QOxmXjsHw3jSD+hbmw1JvzNng1jWNuGtaNyAvi+OrWVCpaJYVH6oy1teIBJfrzsFBVDiB/kTsC3JBL3IC0vOKpB5evgtAJb5bmT5m3skuQUNn0lNBQoAiHyhpfAWrMN2b/JO65BFxqs0q4aan7K0Qws5cNShzk5duCTK5mHqq9BncxAYaUofrxHMttTUTKD14CXJUY0zsxJexth89AjgXIg/t5y17tbzSsgiJiZkAwIEYXLNPOiILKzlsZgQdyr7OFZ5yllgr6Lb1kp0O8ohlZA4j8d8mWYpCsH+Jb0K19qTucA9gv96yzrShAsYPRo6C/iHakFE1KbcrDaktWWy1S2hQ6vbDrWv6pzSnJpWrrt+idSRkntbG5De4FyqfKjqFUtQCo8NXjTddDqANllQ/cgxAsNDkje6BDnbXemXZ0rjFFa8U1dJeFH0ABRTucuWORaWazhECJvtQmqSu5VNWwJH5HLNgeKslP3HLP0iRCErsCExSnGNZT3d7xAly/7jR4hAA1mkAbUXbK0sWTTcBha56Jy6YOfWDVxN+EkSFyEQ+YnNw1gr2pOmK1E8/UYf5nLiQLgoxRaJuXlRO7XYNO8QtkUYlcUv6v7fnfv7KqacIjLRd+rn798nMOE9jDIH2BE0HjNh8tct/PndVeMyBbSrlevybTtvbI6vlZ1fShWPj6/bR4KzvhjTTmZ5KeMLzwi+e2d5YXjGa1x7hDvEDeurUuvpS0PcgHXsUqaa4/O3OhxvHgueIl0R9J9I0wJa+GQc9BMfpdx7jRxyHx/NB5Sf1H3RiziYGlZl5ckd8UK6Peos72qRFwwRdypdCEwc3KmQ8zCqjT82MGBM3DT5jqSGb4fQ4HPCmyhf0Ty6WtAhzD5Ae8/h7Ob3bqhIIF4AyFnAGkhnGUmsYezhi9DHdAEt7LnEDasViksoeXxOattf2hVOAQs3t0XP3QQpOBLVZwPcmbH9TJEwfLD15D2kZcUP71wtlofItE3IGl22SnHCbbBaDDt6ZlGH8pY3gwPrCLsTI4RTOAYAO+AhuKX4Fge1vGwFD86ZSF6V1qIXfnjkeuCJ6P3pY14C/D5pUM8piwgl5FsvDF+77sZOhVuX2Z9w+A21alHt1yJpuVjbV2G3ZXEVUuSzQvXsUkovtCJhZRG5hltQ4BuG2kuZQjhs4+5fUv2dp0W/jiIsEHxz9oHWoRh5hchHgL3kz6sWaX2ZBCW3WUPvFkfHrIacxf1IZ6T1S6kz7UGaX6K1JfIoctLdn6L93vrQGuqDFCc7PEL16AqAGhG8tF+tTCgjQL2IDVpHN5V1p80h+trL1xwfGXM7lnBzmErm+tHazb0Qs7uKrvH8tN1kyQU03IfzqgJNKpazzmGXJaEnxxY/C+rcg9l6reniVvwwQyGG0yxhk0V8XawD2R6iF2UxmT1pj/GsW1acijEFtidB5ySWVtrqk3B1tyWwx1wMFVYnS2ZxWEpb4vgKbUe3aIZiV/aGGHsTH7gcBTYi2nU0sBLty/6eCRdUyGMFNTATREkItRQDCHKvurI+wi2iBI/xTf/uLCtPeA+zhIlpNds0tUsYe8Nc4PHkCRptXwGtuxy6lhvshbMSREYdI9OqLvUpqGC74oY8DoWY30EfzKYf8hbp6/QGe9KYGosZBtJbrwgBCRqbywcKKuC0tFJN0ScjkUxoWPezBF46DRDpUqytvoGrplJEAUxYUK5I5XGgPnprCIeu2yJFPDowtY4dgq13D90bjQOFvLQcDdEqHl40sBBAEK+H5jLkMUnSvOQC83RszVgj79mmct/Qjid44CJMt/eB0htu3KOejty0JEoLK0IxzMb6aoihyAKACDo5K+fs6Rbe5paHHTDc0YEXznABslfGycaKeNtJv5YmohYC3ZmRsicuEbL7htpFld17YL+rtpM7IamvrS/Kqhw0httSrqX3hsSooRfdz8uYnz5/1es36eh0kpqW/KfSfrVe9nvnfnt5azwRNPkSLXNbxrQffQUN9dunXSNsf90KqE6m1xbdnRn7Vd9/Pjo31iO7vyufkddbNw3yQBcc0KtHGptN4O87HUk82NKTmBGrk3fw98IOVg9VAumQWZYdzVy1DV76Y4keFrk7S5pXOIHwQduNTI6LD5qqGlCLzYZIetVpxGjrBxoQsIQvqK7vekT0nTxuWYNL9IY78igtSMji6nFOQMTK66x8X0t8nXlBgzdkidGiITLxnab+1onsRxYFC16UEAvHg5Q6RStvXmTiMksNL+Rlaq1i9CqYfjgE5TiflEes7UErhSzKFzynxC2OBWvdSsNBODInDEcc+hWpWp1RszlmAUHkwk5hvxxdKpIY5m4HcGTu1QgABJCOrllvXK0T0X2LkO3vqsPIAIynqPldYWMtc/cDf1bp8VBCv62ORgpFXPkRMaQ8e6+XvBDtPUVXkAKTO76f/wgdHPoHtNCoC9hmepC0DIWC3vWmARWdeEr78srFri0tLi3bZSzTLaykHH8NXE7q1VbJRKapEg59b2yNhhr43PiLHYDRzxrBL25Hie4T5D/LVKplL39JexQ9HnPTizjLPmoz6CKukSpIo7XgLcivS7SGQqQG28IoJk7Gv5IPaFt6c7FfHGKKsqO8jCsYr23vYxlAg+jGhsnfm9Xe3H1HDTvmp/PgMIVvLZnaXqnjBGdq9bkXTrIiS4PDInMssLp5N+tnauDCLq2IjpHDpjcAeE74yvns8SCPOmVIJz8FMrdQtwe9udw0VnQunqYQ1M5W6zq5cPIAJeEsLIf8eYpZhEbSrceb48b2pTbptXT7n7OgCW5d5oqV9CzebkFn9anR2bdxaYWge9IB2IAM4ajwwswJsXMAA9Cnmc9fdKylxkdzLUS0u9dVDJGcAhv19/lL8Sy1TZaLD9+6ioSbok5VFYwoapGo95zSiimUGpe1F/8GD4IWJ6g+nsSVxlIyVItTiWLqVe1ii0L3naDCKjrVea6bxrtMP4WnFBy5Y3GO5e/1dAICNYSem97t6AgjV42wkT0jDxUbWaGAXkIWdMMnmXDAM+9c8+rKP26RUcMzhF62vAhiAI9Ko6Ux4HCvdjc3UFWjZKKkVS/mlCoPhs71lBCOY5SI4sMLtX1qCI/ccIwuUg/wzi/OTRoFvwyWGF8LWNg8G3a31Mmh+MRXQXu4+X3H5+fmuQt5uHIjXErXpxeO+vUEeHStqwis5mGYsViMCWJZNq4VAblpV6GOvguQWs427rnRT8H1r3Go6vX4PO677KDtff7sNiTWlKmBbRqDr/4UvGOymWITUe2rcA+/q5WiZJpBb7KszgEflqmbnrXO/ShwiiECjbKbMTBtCH1NXjKiZvTjoxeTJw8aGgUuYccVdNBaTw6XXwQxES8ZjodWbwW+4ASs8bzYwF1B9poSPgOHl/3at6VeQmBd9wo8EvGrOecGYOiyaJXJqAwbQylaeykvBjroUiSkwKSAPVaz4GhXaQ1NX0iH53KghtVUO6OOSkogeO7lSmQjCKNqJedsR88Cvg/owW480xZlF8szL8BVIchtWv2KMITjRPoUMvQiV2cCGStrtcyLmt5+0f8iMgciRCIyvi5/m8l1ejuwD0ePVq3cLDXvnU1Pi6sLxHDZgHDYB95CNT92LtQca9deUNdVgLOSzpNYumyEsmxz+ZflG0WlpEaJNRJcqTvPUklrzK1ce/rjaakmfrYym14mx3VmnGBuuZDEnZhfC2NZGukxFycXsRINLt7oiZlsFSUPTRhKVBD/7UqZFfYU+tNnfSM3QVthOu5JkMx0t6UJO4GG2vDmERix4P4qgiJBFt4WKzfggFfiX3YzgRMwJN4LtTMOm7eplKtgwe3lyywciQw4nM5SsdIOORW21mPEH6P5YCOBCC6ejqsvq1JAAfT0D4f6gA5Xr6LUWeLJv/bKnLjCsXR7oDKDU0fqTaQ6R/++Op20cHiVF/xyRe+R+vdYfyltlCBUNPaLN5TvqPfgxqeEN973+tqG691pQF4yIgoL1QjZLljQSWhJCemHbUATp2rjkNRO05qWxty2ZlJvMCfFDsmgWlAOHwmvWLTQlP+WCTsJl9+2LK6I3+FgScxiB7i1INUsn78rpKVaxRwZ8jHh/pXoP7SgyvE4IYr5USxu4nBD6z/72uzj0JAyHumrRXPVg9blCas1szwObC+pslobbqEO5ImvUjr1fFk42+bXeCQhSCt3y9pKocDp2uaED+irwJuMAs0FIKw9ZYnKotpRP7VFyXmobkUqK3Q+A/d2sFziohT87LTgd5TJF3dQARwJBRzuoWmEZ4QzcWmmSllMwIUW2yL7qBXQULCuR5sWKDDX2pGUFGStcebeCwx250FjFVIm2ObwMTH3ZbYCXJC44XScjX292aRKRM14I3Dbxel77XERIpsdS3ygaxsg4ppWj3NAE7YqoslAYRGIJFydRiCuvuJ4l0DcAooPN9g89gUeafW71oPLeaOADzR6+iMsLMmtHb/b/t9Rou3xcHVI8ptv3SHlJHefu7dL37h5R8nA1TLv1rG2/vjU2qDzfpv3GZ527cmVe9/n5J5t9K2Gu6f2e1vKGp7NyrsSgXLHWeYvPUdXy7t+1GuidbytNNa91SGlaHxMHFhd3gh7O/3L8dMyUDm8PU8w92P6MPglc3jWfGCfTT5bJQ/PhskHuKAICxw+F9n0iWhUp95zalNiM9p8p1tN5WkJqBCyeGQu69JrODqFdZfeVe91vgSUt/gEE/g56qAuQqftUSAOGGkNcxJGyZYHAqsFjNPHgX0p862OoS+2242ZydGJFhdcuFTHmlplLFKNgamdLy6mTuGI55NHS0LxR3MTcYcNUY7BgM13aVeybH3B+CY6ra/0DjxroDq7VC9QjHLpc81t7c6zaNOXDU2WUfagw5ZoPySTJ8zDCBujTB885i7qDcl11sGAIuNKqpPIOWR+JhD+Sg7V26U2Um+i4tpj0/TWuXKt/m3bG7ppamOItQcFT3gq+Tooh0QlaZFev1caNwVEwkqlHXVij1pfGB/VCoxA8RE9KmJSzhvdXOmmmZd5JkUIfqX7UXCibcbbfZX43eH01S6RKM5dzbc2IiVhIHMReoE9jZ+1k1HNpceYJCCfsltl7TPq2kQpz4zvQUEIbXXKWfID77nFSqxj75lpzr2zgEcJp0H86RU8AEIzclCoDmCDwh1zA6Zgmu2NcxpXDxAqGH1Y7oamam11KiwSnfEui2koQDbNZWGrXna3+Hn115TyX/n83GFTH97bdbUL3cEA7c83e3vzsf1uQ/v7HUcjibN2/uWGTCcY4d+/1mcVfre6be9BmzvX31f61uP1+PSduLiXp26es20PjqFb+0cNdv/EtY33Qt71U6Gix3E9mOWhzCqVgtvo272za6J2Tf1oRaKKh/pdiuYDRypdu7ZsJZmKNzNWdlqKgMsCrwRbzFiQVNbp1jPqyzsUSAbHIrdJsUqdZiIMrGwyYp1psW6xMdU3RtXCIaPAUAdWHuLzKjrIEA2KiL35ljmOsD2WKysXTiQF60PMUqjMzbOS2U3NydvWk1yiPCFC9UdWFhYDSbiVHIEunIb5DUiAIM/gcgDHcle4zWrAk9Oqg3GC4J0LIoECdxwWwRjZ4g6ps6P8CvzAstMxMmeZiW9//O9orhqeqx9ha7LDkQYFpuQ3dzsMOBcQYlqdRBHWyIiaNfc4/PlMNJAbQrPbEYw4dCnf0bZJkx/285finFLmK/28U/mf6Ox9jgaq91pa8w+FFx5oWCjiw8dPv02A4nLtQS230td8uuVLO3+Fl5Sn2ETV5b7ZLxSj5bVB5SfvrkeO1aV9BTtwdAl17Id+bU/iy3L01xC4indsvnkdK31e23ipszIUfcF1tu/juZFFiHI9HVHucCZXXHfm8ylFscBp6gK4crGcBrSGRAt88zcxYGrDvbN1R20+6D7VY74Z5Xev5QCzLPmopyDrlAF47c+woPySg1mqgQ99K83yJm0+UFyvwxzF1NscN6h0AfEFWJu3SBW8gp4SBMe5jFyNqgzM5WJBW04CTGZLmgM6jvJ1TNXW6hRxtCUueBohmOYuhMrVJy5lG0OG5oXOeSSPDY7BJMbRnjw+zCcYlJqnOZYfdmCVj0FuoIS1KUmt5iK5dJnhAYjMQp1m67DlpxfEodG2gAMvu1qlTr/x/t6dWDHu8ur2pNECTIGuwys4MYXajZjXWhCoMAZnyVSkZaPljEKUZR4SU+iWbNDyA/dyo4H3kcGxgSjaII5uZuZsiNDHNWglJG65W63ugsJhHgvmaWV3wPP4kRZ7UlQiuEDMLdGolbBBzUO1gkHYPNYlxxWlNRE4ULIVJ7u6eUSZLgDHylGvjGjRjnbc7ThfztaJzna3auO2oAyUUBbnGkbu0hHppaEl2aXD3EPlF8ux48AqGXLJaUfpNGuOEy+csCQ+dsT2ZCRSm/5fTg+It0GFuV6I1XZulg4/75D+8Hk45Y34fGhZvyRq1PtfKdGqgN8Zee3xnetVPt2UQHgWZtCelvu1ZeXS1jKef+UMeXzR54ubkpc39Qbidz+mYH0ZFWo/2tbKCW7Zwq8F8llR2fNSN7skHBvlmfGsC0VNO/IIXubU22Gh2+6lNaOJ5IZLgh74ZOo/lzuKwZ1S1+BvItyNHrRo5nK/ni2CoE+ztY8LQHJ/X0U0YMsfcxPyoHfVRsMSm6VvmodVbGTxkgYJuo4uK+6qwFY8Dq68wc0tLUOt7E9PlIz8pH0lfQ5CjONA0g+hzrswzmy7LK2isqG0l0daiFwlg9EnMMa1fCWMIEEIYcFVKVYkD1oL6mfMRGUUWCN3I2Nu6cZqYjMKaWYVKJIcNxgfsPGKhJxszJUunlpYyaFK/C6/OhVdIgNrFrqq12VXIrBR9imtcYXdIX3mmhilZFFOriQ4PO6lTcFpN6qJSEA8nzwOAmFeGs4roI2Bk74UCNlGgZzlcvTl/pkc6Jq0ioKZ8jS/lDD96kpEqTb5mK2O9fkq10JTY+49QlaDqM0Sb3rHRTDbdhMAESHVCfweYtvxuk+E68BduCEFP09b8hgnM9fYr7SZlB6oPnV37U/dyUeBRZAWmFrLwFVRvboLMIj2lkl9ITeAPMlTYmdAXo9bJbBv3cC3BF9yT8Q8h/QcO8vd7UFoErd9Mq4v06DQXcKAV2XQhS7gK6CgkrEO2s6nbMvZ0MygS9cpm7hWqM7kFnuEjdRojA24bjBIjeQnDs+yeW2NYaon9xLbtiKqConnqm9dThhRj+KlHQ4Rj7Z/xWxzx6nIiLVG5Ye5RZxA+yoUAwL9zajw1VIAyhu9RZkIZKjFFyJZ0vTyEhxj0nyhQPf0yUCq4eSvvUQ7s08fdDPONnJqdbVtOM46f+gTXK35tWYFz0w/uzzqxiPHuPasI5ZjKKs81ri89cZ+uycXgIS69KjEYc+aWBmyD5cYdstAnaZ3yioD/kZkcLiEUeiCr8KtXGqshbBzX0qy0ClUlPd2DE+JO4qP5aZt2paCCLxT7tOH4WhGXbEtxBgZC1ukvpfKRXjktHAzdZyUWLEqrjRcS5yIisr36WizKBnVAm1B0JuUWPPlSrnCySZD5S4GtzLHLGsRsWv1swyFLwEOBaK033YtX57PiopvRUEHVkSmPAvK1SjfpMWRaF+p9IGulQGACUiacHP+OhxDzFGFNuLmLV2XRzHVjJ6qkZc+m3meCosF+GEMZ49TDw3Mp5olSq7fOuU4N80LwOmR8OSQkwAVCP8i9/d1e6iYtG+2+7dbr/LLfRW31qhnCpR9n2VdEkVf2qKuRtdvtdm3uuexZfFGTyFFuVUbQJRV2Trd65AQloZCimDi2EViy2Xp6rUpQMHTSAvnQJ2Jl3To9o3t+sLGfzbp+5pLt/A1ISnX0fDLtPONJAYdOOJPvQPpkdhB4jSl+LqLhChu3vG5NdRih9rEQ7u2tZe568IXjtuTNjjSPq0A4NsCnxFEXBqF8AuP8fG+ye8JnRMtS15RSam2+nkKaDI2ycJQk0YrlDqkqo0si0FFC9TETG58FIUHuYjPjW4U5NrDizQ2IWSmCraa4Qb+I1FwiEarZinGIm1ptNHQT68FseLbq1YHY14bkjZOqM0Za5GIoM3LV2ZYjUMJnNh3JTIJN90OpYw6Wnikn3G5CHMc3comRAfYRYCdPERSbbrvC1ftdw2iBMDg9Gw0MI+DLvX6RDBJWrjqrmZ7qLeNHOpV5n2257QTVkloXlbusHmqxbnGRiK91Y/f/KWzzJRzY/qPywbAdIhs6UK07eLJsvGCjXa9rQ96CWWTw8gkghPAaenlqF7oOfnlm5cSPmED2f5ZX26xdnNakfzDK6YnhVd6Z4vQxg3vsdXV75oj784TIJZZBmarf18RDBFiSM1N+kvarTNEf/Isx6ktLdmcd5/BvYzyQot1PbYVJTuQV2DVgcoVvs5+G/ywNpG0878nVrfhhfU28jiYE8y+FPN3gvxzudvCC24KbISGlgZWJaW5vCQOiWNo2fG8FiIeN1uRrGteuylWbZaZLwS59TgVWsPkd/tdvRUAxqGLmdN1W9pMYnIt/1kX3HEr0sPGz4DdgOBwP3zW0O3WjKecpx0XnF4U6Lq2/HYNl3T7mqR0+xguT3ei/bBqqb3Xj82+NV0bp+5q7SnSdcSq65V93Es0LPV3S3xyyPeL52NHCUwYBaDj5jaCtWniWa/wvSkWYVVq5Nneo4NytL9dS2ylWWO+MTwbptA2N85ctNfneypW9nOcv1fD4BX6TEEsoutZSmamTiU5bNaaBjF75Hye1Nly2AuBa8WzbETpB2F8DgYcbpL7zoXGLlrmG2JppM0Zwo3MWlf5uVH2oKScrmnFHGJHEmiZI2RErJa4NXmLPrUg2nVJM3MrVBIj7htJ4BagsITwMrTDPWxCLKuckswELqoUMyy0nIvF9tKctrQUrjcMX8XGAa0SfLUu6UuAjGKc5iDQVcDelNLN9Zd4hFAUk2WbfM08jmsulyVUi6PqKSw1BFGuQ1s6ru7wvDY/U9/ZN9wSoUjL258qDVAaLpOdd45N4FR6viXMelCt9fP18WYXlfrYxe/Kxtq0FqAr0rAE+TSjzvpsZlCYsMsxDkBpDyTX9Ruf20SwrdC74VGHT5xS2zhEJ+XUrkDCZUk8DvpU8HPbgBtrK3lv22OZl/bUYE6+eWma79S4n3UKms7tmpvGKaBdRYrNPvShC3wXvDYXUzRVud5VAYqYVfIMUOX1TU6YQhbdTjvzggOVA4i8gtpCUkEA7RYbo5GD7eXE2pA0QYT6JtmKimuQf5E5ea3XSkdolOk53ppIUmJPS5OgIrYaLGhIxfpI0GjRIdETif5lnyAWp4a2GTrQGtVJUj3d7ZKaHp7O6TxBnIGFxO+CS1NjoT2oR1n1I04veVwFb1TQYMxp8JjBzwL2uAHZu7VsiVG/YY6hzEcRtaSkMdfyNWPJ9IOgJq7eGK84gbY3ZsYkvSolgGpRmtdhHDS2L/Gvv6lLEEpgQh+QnFOlG6n4cynKXNIz/ckcAt8GiNPaKF1vJG4txcJy58Bbnmo4IX0hDizJtErnzWq5lbIiEHOKi6LZ9MY+yqYzIHOn7H94GYnZZw+XSnMvzqa8WjdExaY2IbHSkmpMPW1EBdEAMD9AP/PUOGOeyhLcwHnPxMKRQmoK7hl2ctR2PHBUCrCm2Ytyg80Y3wxrQhEn5Y0G5kaNdPj021C/ciELeSZubt+yKxVxKeGNtL20ToG1DTgzzcvLT5nvfTc2stfJjI8+aKyX7K0OPBb4s7A3y2kOddWq1k9KaO53vUMuICbWqaHVu2IbEdBCrwkwv8EDN4SjwxJ2lKuRHW2lLPSvxnX0zujTAdTKRplei4udNxaeddNyQrsVIogE7/emDGquXaE9SB2U2ka0RPzhdGhCLRHuHGBYgpaziX/6vcjWPtK9FFebzvuJyzDToXVwqU68JS+f/XTBKGgDbbbgNQc5ULuGcsW2MyJntuXEPqACDy4i4M5gJYxC3pUDUC78ppPeTwig3UXrnaS/UEHNKSaKHmZ5GJQIVR2Z1FsQxmRXdDQtmS050IQkfAhrNUYZMxWT5w744R5Cww43eS3x5Hal8hfu1ho1QpCh8CRZiATE9xKV3D0pOrlS+iQUfMJFXwhQSY6k0+YHzoQ/WNeCpxcPl+6qQJaQO5SgYYxw77rgUocBb8ZPwVXU8iAVnBmz1alr+ZBzzihABvgd9rqMeqVOUEQJOMzWZ23WVQbHRRfbbPzLgFPoYuYLd41MSgmESbTYYdWqrpxm//1zKoubMvymrPnpWNNfqeP+gDNHyMB3955L6Cv83HHG+zLuy/xZdoHtbckfcI8VnF+2ZQYiRMn6/HqIaV23pfS/5fU+ylsYNTJWtdjXegprvmvBsQ5c2uZ3+Rbs5l4l09qiXGdUrn4HZuwrLnN1yF2D4ajjxuKoMZZhFx3JZaFPb+/2lOvTwa9hEwowtMpHrZrBBFaOrFX/kH388q+xO2RECQMkXKvhbRJBmybQ5DoL7darwguVdn2PARUZuVO20fle2zkqHEK0uA6LKxkeGmqgvmYkeuH+0uUfINskkLDShCnHhVc50cxCDOs4GULZFIMmhBJ/XYH+EgeP4AN6nkU7lQPli+IdjiEzlYhAR71GC3yVTwOpOqffS8uRUzW64JAJIpNQ8PcAHsrmkpqSrTUlnej7QesAeJa5nCthQIAJ5i8709v+c2zcaHHH8AbfPvAANqhjZUupNp7sGNjaOOPpyO/soANqHTElqm+CFOUrOahb+zU2fHHHEVOgWBVPWye+ZjouenZTmra6xgNJJkmIpwlJHRWqsirkKzzwJHW+l+BlEM+DXqaZxVXOW2htcbo6dVyVlSCajpyyaUWwbGGsWuP17Ui51+uc8R7c8ORg2TFCTdA6q2wBRFZEC4zyOcKP2rzJBswISazMPVfn8NHgWcQwlzQM4DlKJa+1BGzmicpZ+Vl6JRqmI9JKTC82Say6o8S20yoKyTgrsYnLxmEHVp7TF7oSo2UDqgghr/0eToe9DuSJs5vT6lPcjj5xDzkos7dxjWL0WVtx2yubJD2fWcNRqHjbY+uEGIyHThCBU/yIrdo1wZroESP01GMfJd6PzPV4F27Ip5KfZ+LqtOsPM+eIo8hsK7s8AxUguajp59FrH+VCpWp4fW6WhPo1zHudJlOerS12sQrtn90+JfUX2vaV7Lu39U6Y9Ov36ZWxl/XhWFDO0ux+70/CC7gxj25/VcTzURLJ0ZH8y0uvHZCFMzVDLHVw2issQpV+DeSmws0bg7m3g135e4WwmuRfFxU0oVhtEraggP2j6lwGC4p4GPMSuFGgrgPBaNtKsQ2NlNQCa/DCy2SaAERJcwwHIJZLFtgcL1p8Jvtl6SV30XpD64G3jYuOpplz2+Xp7FXKkYf7O1TzVZyyhbyejWKgGStb/Tg7hiLB6krPNYZ++ap2kjQAdjA/K8sOX89l7nF+8mmLZ/OKp1lG8sp2FNfq4SPgxcX82GAIAK/mT0edaj63S2+CuRXmltLB0u87ld0DFryW6SyhPMB76fu1jr1UNf52OHKXqbR7+nBnOzZ6FOR7baNC+Z0Zh5RciHfXtZVb+qk6h4nKmtl4V8Hsu9RlhGBc81RT2MuW192657POrWUsKcaifKHHuJjZbZoq7R3LX18wUxkPo4YDGyM3/O+qJ4EgUmuaSbPsuIMeoNfu0oChx9COyJoiib0EitD0kndpJgNsUPFrVI+Rc1EWTvwV7iEyej87SiveMU9j6PKYONBlfTHagVxEBcI+X6IC5uogxeHlV7qFlddEQx55GrfBK5tOto4N4+mv7bvQbY77ErxRYEN4CiZ6kCixmeXT9AWrU9O9lPsx1TSnVhad1llr4Ht7kga3qXemkEwSRswm31V3oBSNlC8n34uyrfQ8rxKP0gmHxIB9PUBgiAQ/OCdoX4lKx+bdy0WenShb1mrLVz/Uc1396SNhuknx+zARUDnb7ZtRrd2/tW51Rygq+Ql5RW8TfVoPlCeNu+oWeyY8K1fRARUMMarLMS7x4kNtsGOOvMq4Vrad2MSSrzkLUK+3XlRbSEXJ/CU+lfl8yMniDtGhYymEMYrXxM/a1YuDomTmKR9OMBznnCBfFEBhafNJ4WXTMQgpHAachEicoEjbiGidaaiianStufId5fFar8DVnNYxLtAVvoBgJm8uVXXD9YJVJDfstphPCpH5zFEh3isJTHkjIBOohCxXy3JKGtWSAl9KBbmMHHDYOpYuU1+1jXq7HP3+zuX2FtgAGxTu1mXuYmd6cmhV37r93vW9WacOSIvMCovuJerW4Pa1S8lPEoaKYn655l88H/d32KAX4aDmelcFIN9HePa/7x5DLd5dZa99e9Kv75R3wVy3u7FJ31D+NQXPxXADflJ6sbtasXG57lHqmVVneRqcd0r9KLdyVRyZgKLra/2wRQK+2cFyO+AQoFK6XTz6+Vpvbb1aYMOEB+a0qovPpOkRfCB2HIhmlbS9lU5ib7sFqq+hsn3DgCXCmW/9n0Km3Es6bSUY8hCxtrGwH31gmG5/CnDHlr2h6CsjWDscpoMZms95tyZtOoykdbU1tWhBOtuwOJ1f2+thCGjFWAjGMlVIqfRgFHH2PL9LeWZiYBXFvviVCNgpanpi8h3XW7zRGLtKyULniJ55zM5qK9N4EXLndSdHILCBTNXeQErws1T8YUcin7VKOhwjR5S9EfGkgHZj1KsfB8J4vLag9yY0EkurWRcygcUlHZd+82qKj4ZNXvRICetdEV62bWDjaWzPaClp67gq4IHg5Ld4evIcxjNNL6+mVspjBhTfm6KtXjrAW1Ma8CmMcYtR5eIz12Rb+bYzgqhnobjZF3xoL7ufftT4Ry/2WDbXQ6asyYVRDEjEVDXKvS+eGsd9zgg3U3GiBvYh96IuvwYqUGfK1kv0sz8skxIUvyuzuXgMis3SS2+a4k+bT5XeFohzuBmzV6Rnw5XvXEdgLvNBWXv4oDx/3nG/E+88q8o2jjxNeaY6cYrUfEzG09NxhedLlE+2KzFgEuIIX+tp8HpatyrKsMxSMTXnymzk3MJkD8XxGMg2jMPkTaAxc5YY9S7xIvNZEtqRoTkh5YHNA8XZio7sn7GmHX7RvLQcW1O9X+IJEs0MonmkJhYVMhBDoRIR72V4atm335vVzOefVd8Ewxe7lae15MgSbuLLCsCRdyfht16bh3AZ0ZEc6LT62xawOunciphagQ37RtJ3yeWX9wZTT+G50L7iLC1lq+2fEIQBAA+0H/UHr7EpmoiFJrac1aZEYXWdxIQOp6BiPJZVew1AnxFSwJwNqxoW24TTYtXaWgFeB6AVABC972cpuh69iGr63fcNot4NxqRWeavbxcVEcS4KCdiBHVx1XTK0VvtBxbMceRgIwa1QKbe4mdCjqW6lCSxI+ZwxXZ/mNDnA6YQ7dFHbjfjlb0jvDDCAwpxeFOGp0KMOHJFMy+hCl1kxrLsCJt8XDa7uyd+Xn1im0bbHbi/pZf8EHOxbZsIP6/aZ5ydkgOF4Uvr9UurGIWUBxrA5XLo5U2499VgZ/nzikNI9p3Zv23xDc+88fYaFzX72zAR77z5E4PI/6xLKzWkb/RvFWkGCfnuzIu0urXq91H67qeX2uK9p99rbsT+z1WnXsvUYmfwdDqZ6RuzD8Sz9PuymfNverTsz9/eIUN1gDfmtehKFkBb06i4ZuDy9G3+l6UN04d2bmoKuuksQBEtGspGVmlKmTxEH2TZOHmnLqGaSB1RuGQIjIGyNjkht0WBzve3lVLaQrplnYVGAa6ruySGZspED3fWV8EihxvoOxFmVXIO16yDxHYpSLbxJAEcYchYDVsaxvGTltZoXw+qyn9HrzNUj/Izczhzww1wOaunbzVelxJ0wg1xLF6cBlcchOdHJEbaGwoMrLeFCcXQL8mxzbc/Yrhkcr156CtAcuKQsbqGpgQZZprK49w73U2vz7Wo3VJdZrQjRzQ/MapLDpTSxfBtMoOQuupg6mELF6YaamtEpZ6lp9ptYWHTVtCp1F/FIDVrsKUJW2l3qPSrWAy2wlEwaJR7hPHRRkmvrcROn1hSL2+GrE6J4HV2ds6bgiTVNof6Yv6qFbnlciqs1p6VdMwI1DDpPHamciFf1EjwMoOcY8JV+2S+qcjGrY7qV4DAtZp0GIYLlSmyYQAEPvYmeuPbaUAL3Vd3PNDHdBjuYHN+Bl/WZSnFtusO9rMLQx0qM3wO1uxN4ui1Tb9m51lX42q9P8qO61sTJWvzjc+RLfZWpU5TPVM6fHrby3GbnxAVxtJWtqiPHBqeFUEobr/cSvhN/2wOcPbyif7k0MjgitJF7UXpt4zHaAxT/OgbMUEItBa5tAcq3dBltb8JmSES9xvK5TruKXcJ1xXPTqsZmsiCw8WjBkdFDKfmb08+Vj2g7dU2M9zx9J171u4a4MzPvfdtKXj7y2s0NAvl1XDbSpL4O3QT9pkwzgy/LoahLXOVgk2/SsZPOM2qjMnNti87mXT674JD8ntaqEtny3Uy7dcI0Mtg6jEH1QfVnIO/KFPleU+pxrFctZ1vpl4HyjQjKTtA1HWYkjAOytAK4XRbnqbZPrpWopQEWCUKaL+XGdRBb8XhJ+FI8p+YvmpdHhB2p0guexw0mxGw176kT3GEdhBhWotUnLcbashVv1hXmV3BhkTEndc4FiWMGauCoXgMekPRMQta2Ms/eRzYJ3YCReWLVbj5CymBQccg8dta35cAL8MgBfuybh8tmbqj93/s32uH17pn5mWazrvH53NK7nARz6+zb6xnWWLhXu7/ycMDleUbfulxdqZtBFe+Hnt+1QOs9BS5J8jVVfm3vTnu/hDoc6/atVte1VTdzUqDODXhgB/xAqey2U3I58XVr1SWydbq43n60tIYIpLSCMXYgw66lIKC9I0mRAQ/1PoENvGePG2A6EEl0FnZB7m4LXltTtgQpfZbHsIfJK4dHPMrDMVlEe05kmUndW8RrJ1FQeHHypfahCE5W7RhDQgtN/BXeljTfKgakfOtE3mdIQxvso1eTO3SW7PhzNgBMngavdw4/xa+v+FKGP/BZkBGnAEMLEFrYq5HhUWWjxzKjR3qNpD98co5eHY1CHs5xqYjXOrjp7AFJzt6sVqTn7ocq8MZ1GCUc4VxrQp6Sfx4pWhouR5CZLKrw90N7250KnqvOFU/GvFRLbsEGLn5R2S5LXXZILtwj56SzX9KrdLoE9Wd1TRd9iNejG6XSupyXZyXSR9mV8onJe8uutJEHdUkV95tQaTMw+pBtFYr9kbEtnq5EGTVKmYIikwx9L206VDWGTbBfnKyGaMfDZMR1CoH3xVCo/3b4+TVKKCTBamZSWY/FE4EH3FwK6xvO1LOWuBhV4B03XutMJUr1/M5pXqQV3N64wv01XzkOfVBLaH2MUeJzngbUI44DN64mHpuscU6k/y7/p6DJ42ESqiq8LyjaC51cppDAELN1eXIjaeeV60woUhuy6T9f8LCJ+nFfbrH4N4LiG/J1gQAAgABJREFUrHEKT9J6uXsnlE2QRKd18tPZ2mu27DuuWXfb84rPjYMqsdt/7t1mMMtAldQeBytxPBVRjtIWnj9NKugdYLhE2cqCo+C3ykVmb/DSdy7eBfP3aWk2qIm+GUWNn2yFv2pZDUoaV2A3awm4svdp/tZyJVdRNuoSySt0//DxtDFUv1v/MZeQTqUiVxWtalOAiHJ2VK+z/yQ43SfLXSJR3Q6fQlhFnpYr/oSoAc360R5xFQPkcwMKwNSRSLW40kPAd44bCacib2htMHKZghiMSwTw5XXS4MC82ooVpSxOTLxGrGxATh2pFGe/ktvnvBWv8KK2xZ1Vm3IVjJIPe6YLGf2txCUpLxNWYNYTil8VmRVHf+aCKt8qRrGKj15MTMQHhU5+ugEWnKR8wiq7djqNHo0LtHxivtKJlYPV5+s1cpelLQmC8B75GkAxOJPLBXARHhIdWNGHw2TmcDuCC2dwdZQ+TqNQTjN1ovmZPEGXn12+Xd/bf0/eYPL+PKSMlqKvyppxpksIxNTuvnIABeg7NkfAb7hJ+7VPOrvX7F+GBtx9OvfP1rBLj6Q1X9ay5aqwA72Fu9VnjTEp7npcBa3PXFsis1rCg4+k8A0F/HRsRJS/ucvAITWosuT5xp34U8gnbEz3Jc/EEBcVJrjqSBM2GELGEGwowkDiQpvC8VyIqZ/M7dJ85FJv+CEYT17NvgsUALQG0iXqEWIlyKfW4zT2hSgyqD+dVg308ysYopRoibHFZQHbygxFbBdmYq4YkghILPOlnsXqAmVT3o9z0nvrRrkVX2wLJubbThG9asVF2TTnruLTJu02a0gla7UO+YuttJbDIxI2Rw/8N8IZPX0hWqsZ64aKaqjwq8lKiZpdcmx1+sytqstEyKyMDln2AeBdd93pYecWNVp45SVEnXrVEIjFHzwkDQfkTApHJppsBWKlxx47eFjpSK2t3G+kOw2hF/Iy4OUAFb1Zhg9KcLetchhct2ZhU0MJuPCwcCbdNaTaZhX7W86wy45peqke9FKYsrwInkrB022otubcXuIXQT9pq4NiChyvUVx21OEvI1lIEKmEKnrZHXWg5k5l5cTbap3p6Asi1mJRzyWP1anXEQuZblfzScYgQRYW03HViDrrIAw1TQbmi3qgiJEuK6MitgTQyfx3gnwegL2Byla1apG26kLU7rD2UVgTKNry3aQ8qvnverPkZo28rl9+fPv3qycZSfuVav5rpdXaMMPdht4/a7s+hSwVCdXyDtO3rt9228kppf/MShbvx5OrnGxKgf+FMdGJ8RsHyzFxprFMOiq/Nt5PiyBN4KVL9Hnf40OQ4EvIY9qifkHOtV8rt56Rp6Y1CsikE4/PP9R89+vx2Y92POF2u+osamJNGYPWm47r6eeMvm85hLl7OzShy71tmyFt3ZMTRdk0r/dZRCVSkqYFJ7eOCl3thVdkPgQY8obDaZ+hp583P0gmmwdxeVPtCRBUlwhdtxjp5EBtIyogBQlHJCTH+FaWmFpi60YmxgaCP1aQxkGSHj3T2UP9rXAQgYXLwlThKB1ItFqqliTKC82blf6jRKkQ8f0wXzm6w023ykGSgshU3t59LaRavRuxsXQGW6IG1Uw4Q2uSW1pGv7rh6FgjA3yNcyatyqc8asyvLmF/BjsckbDSu/wPpcTZ+C9Bhp3uXw2pcxPOt258eRn0LYLi1Q1oPdZxvxk3Hz6c3avKGbQ/1wlS/L7QEoHujte0aneUw3OdAi0rrUWEqBmIv8zv9fbyndhJz4qsDqUCH35iwRm6dRnobOZX7CDRyEMgAHrBHU0nyKKMyqlXFgXpa/WY4rKLiNn10SEVdqRiHaRB7WTdS1qQMa52TdC39r755cleoHNsekE0dKjPWgX31eeDYzJFlknDfAO9B5J1uVaeBZYJf322lII55fVVw4l8q5c5jYjNh6Rea4rjTArlxCUCKDgK5o2lYXCJiW17detxPK+cbYkexSSyVzNWFSrfx5UgDXaA0JHScZpHvfoIoatgqIMsBS/oua8taii6SWPZF8fTxTX0VJNcBrKoa3FnrYevADaQ29ZRacW6/4bWIIjEmWpOzpH0bRtTX+vRodNwpPniqKSniR/og2FofiYk4OLTTfWuPdHj+mIO8oASPE7R1pVXIIswQ1w+7RJwGDwg+M2zgdvqnvfo3w5gqMwMzL6dXjFb/tSNHtTmKu0hxSZp8J03BSuZwPSqjVK9zygkQx93V/Yia3U6/Qko1KCxumhmj8Q01IZg0U4cKcjUsod7pVKBV/+cQpfD8UIBAkV6UBQ6K9lc1Qg66Kl6IrH5EVvRlBQKAabT7kiIhoGKlj+B0YbYFq1or3cpclQZetkOV1UlIhQDg2kuP2B2JrOijY+xQmrKyBmoVmxLqr6HC2yRJRFtTUQ2kFz4QazWeLqw66LEEA49wi7O+O4t2gHCkab33K5Or6n84lc/LTbOJTj85bY3dlFT/z4JP/eiY1zRhBfPeuNuNfPhRmRoXfKuVrspgfClF9dYyha22peQsdnXPp6zDwzr92onb8UuammwCyeotxvdfBAsHSMpycy6/bQMUrGsZxTnErGqhByNHrzM3mFf1dTmVJbuc1EVd6qW7S3thm7vjVptTMh8lxvJ9yVbcqFyg8vxGxcVFij1sp6p7pahva1NADNiq64y0LMS/wBIqW2upT1K7TZkawxl01zUxbfKfXMXl4JaL2Y4MYIPaGG05AFS8aPkWdqRUOfAooSjdsVFZlA4m+N4exTSTUBCOLxrczqX5jk25FAdkmiZYdxdN3v0j5NaIXMtRFuvoUTYGMkr8g9FgQoiqSyrTggj5nWIfn1YQAA4lnD1aWWz4dZC77KGMwgp6NqtA1y4NDoe99jIjQESkdtEoMEF7/C+vCqoCACC5fXeDPk7bIANmxBwYZzXTXlHKq5v7d91y8z0XjsvmvyMEanMNHfNMX7/qQV8w/8mD/Osa8ItPaamm/yagMoMJ3hszM+C1DSSp1sVwIJw/wvw0R4PwS2+4LG2vzw4ctHwgu5SoO2sql9JHsnn73iTicoJTSe5LqO6v0pAYnhDXB/0rmerWZ4QKYqip3NcLj25yM9Sy1bKq0+PtaM0sI99CVOi3K34DQ77EEQoVkgyY2Ng1u49dojXwM4J+c1GXdnepNy0VaWPl4QKMm1wL4rwCTt0sW/9qP42rUpoxGyCCe5jbdglMsqKcw5uzJk+4Jc3uEiYFQJABRx0p/NrnS3u1MGlPQl+l9C0OCSldXD8a2rRWCC3Jp3bZPsM3WsXawmd143hFNSYaAfF03PeASxLz8SK4UPVv+/2IBxiP2fSTvM8+8j3Be/0hmxACqCxINovGYK8oPKJ5umCtNEgzCx4W4TsttxuNCYu5Sl0TufHnd/cbZn0nNScliEQBHwhi7gcClPi1LyrU2fZuZOelxplU57WLGxeSzrmKfSQ8MP0EhBr8IpIpPotgDjnUwlQm1+XHksWj108x0pczA1QmRY4QDW94tKKjlXOuM0aR/aLQQgjinar+zTgwOHv3JAhMHXG2l1WIFdkd7n9DiwVyN2Z0CQp1TIsZOijubdzSPafvq3xD3PMEdds2UCACOtWEdhgyhPOTwc9MBK2d93IET6853QziSjnJ9G6ulZ2pPn21JhUyNNN0fWsIfLMRR3fTlht7Cmu3W8BLr7rBsflbT5rtdj3luwOnpNf7Cef7yKZ5BuQKzJaRtPw3rMrgLCXCGziVpX4dW/x+PZwvlF1/v71TYLXt5+AmenlqCOiPRAevwtgPCdiQAylg9lNKfzl8ozvTwO0SrQ5QLk/xgLf7vX9OSJXoENCzKbINtJx7fylxRS5ajbCGETMMWH0RZMB89091RHGynY0rQMNSU18LmnmqdFzLfLAlwItCmpVrpFWnyYBVu9mgN5YJAS/RW8A0q+LW1Vh4gbMTRNYMvgv4W8i382GUugs6H0OXHpidGBd8/Si9odn5lNnRu3JZjoVVvkJFPRcnRvzvdxFKHSVy70ymVdAFAFwQxnTjURiX408zFPiipLbNECByhNRPr+xsXfxamyK5k6rvOLS9ph8Jngy+TXk/PLsdXConVZdIYnetkfD3gfSOvXMkXZnoeszpN/53WiOVP2jhrJcmTUTUCVexHT3qVHypoAiudPppnihLA1LUER1oF644DJHaT0lCJX96/njwsqyn21fjq3uHXxA8Pts+1bbyaNfq7ddlQsmPRH/ORcaX4hZJ7XnsGS9udEqXlio6NH71XhiHqOGjGMzlPHVMqUfbbmqXhyuZutINtZYOlONFQHMZh61uWW5OjejOO/KQiZpBDc2W9ie3dUQkos4crlOl3eBFXpTJedspSaunnVmMOD2wlliXsc19Tht6bguSvHNwnoMtRgCyXhP9r/GoSr8eiOYKn29EVF2VGk35+4Hd3HR3vfq60/smdvoWh8cw+7flZHweadDBJ7euW+rX8boKoiIpb4iSJ9Rvh7GwEhH2AqoWIxcw0jOJzUvqFxC8mYyxUddrgwLg2OuQa/v4pXU9bgFRZQ+KYdKb93d4mJr3B68s2q7HtonebZ9QyRC1kWj4OTWcRzZ2yWnFzRv6fv7pPd1A/M15/l2ef0oYXFqYhMW1+V/cF6cHm2bSNHeFVaBlxLqYLUAjqoz3JSOBBuSRJNNVYAH8pz0fkeENeSK6dYUjtfnITDlYyfIRHtS+KpaWrTcF0KM4IK5SV4JwA3mWOVfGpwkWvKKtxxB6zUuNVeGO2581CmnLopt7avB/LU9lXQTlVFmMhc6rHrRDrrqgLhTwCbdBimxt0eB87U4VlmAUgS0lfhSh1esilHKAI8QzWo7qCCIIiT8GU5AFOAwXZ9kS11yNgDXjeyX+9gW+jU7wr2bKUZt8dyxXWF5Ju8rIEAMxscd3ld3VFpk7FLD/jQe2ug/peAPsaoCfvhY8F+XpO89+e/r2FlRvRRlNshfy1pTZEPiV773oH7X9kdvsMnxVAbXjzFT3E/5X5R7+Fp5spEoP/dq/xUOyLZeOdf95ybWdZbaesFd82fLiM97+drN0hTAVrCBuQ2Uq/QEF31LPzcwH0Or+F7IXSVQzPqNnntaHtsmziygzpTPBufJkk60Ig+K2UxU6xBtBZ7ZotVmxIm1ikbI5UdNgTQeruNGZT+z9KhnWqUbaUdeXfhcjp0gszOap8+HVS4Kmez0pSiaX4TLqIVGYEi2xg2ZWduPsrh56VoJSVgEsKkWVGCHU/SqvhXdp9M7uV4nViqRrd+pHnd7qdetBB9KJZMSOFQuPoQTKzxMkmldNlpxHCuLYGiM8dbQpMbmyu20Rml9nTG3eT6SilBDh3Cd2G36s12eCGdnOOgF1gDANcN3LrMNLvABACwVPTjwNc2lYYgwowbRlVtaKI17iYLtK95EpFCi2sLIxd9PELG6YnVhgZrbnkKHb53v8/UoxNCRJooLLsZN2Us4INCOsRWwIBdxuZjC2sEzW2bWYE+JV624ewMLrgtJDj5pZ5+GgIyiYJOvIA3GoO61C1uyvujwdKTblHi5W8sUW3habB0AKw77cpSK3sbgudZynHNGrddRb8okD2ozirFT8yvdV+W9un4DHjwBCvrxh1/Potyu8fhjGQC2eI+np37+ufqQ3xxPtbXpjtMunsmzk5vHur4akcszDYjgi5hVG+vi5lOxwFs8qzxvE6jOa337ItD4bURpYWHPK6SjXOXanWJ/8O/1wJTnj90/kbVKRlcNCuAIXKJof/4x6Dhs73w0VLiXxjsNRLQtpb+7M3J0wN35Rk8rnQYJafCZMwWxlSK5e2eSmmJclhWGhrRMVFJKUfuVMMxpTlcb4WdpIShdle9RR1AgvXVBclq6rvDM9RyVOnCl40eL210xqBKJNNmXlc3mVdGZ1ZNMEsJa0g8jx4Mi2jJ4wBcHrioaHWcBZPzrMutIKXEF9YweJKdmuBcS7WLyk9RuahgpFXiBCmJQpCjOozLgFZHmRhLa/hohhS2evCaCrIpdxMVi1DOFForbdLKnmHVNxa/OQbZ60VNMFF1qdXa62hhbzobSR36Ngl5+78t2luRflPSk6F+fc+x5qPd6uRnuXS4nwbvLM25y9+v2Xg7f+iW+8wC04innueQIfHzmqUx6Zn+Za+Ef+wweM/t3bc2vVbS/53doi92/aebCgb5s9680xi5/93dN7htseDZcBRMSAM2ssyeDvBfOpvCjfhEYLq5AG2YveVk3b7TO9KP6Vj9AVTO3VoZoENBmvisUUNDks5glQD6EnYxb6TYbjwPA01+dOTbiSer022cZtP7UkTylfC8zdKtQ5DgLDBVOe5wOh7NsMGiRgAGGsTE72YGGwR8Y4tZwQmtelb6iOFaevoACxjFx2obyOQYptSSrl1wLmcvjsEoWIxNsskYWMpG0tawSPOdQ/pEcbRztLLBJAeguLb4VJyUXrXhNjIUqTw/Phl3yH5aX0vgVh+vn025SPtdzI+1/+4ixwr3KjadggBrm9hovvllqeLSvt0KfB2QVfk40cLg6OiSlRsau1jbrZ2gtsvK+qBGU41x0UYjwZnktW9rupTOLw+Km9C3ATvQhinKMjConnYROvIVLO0VksVLCdWppj4pVYZnV2kXsVKfddjcySDwr+tlwhJIcu8brASC1XBjWp4S6pbbeyGyl++CkuVG8CIdABc5tllAA0PBBvRuTm34fqLDzIulWNqPulb4f3w7rfL3Cl+jZoO/c/UtMyx6f3LESAXEub+RgXzjLdFdqkS3okd3WbOPKuriEatt2XbA9EpZoc7OVbOkptXXZPkpR+mm9rYQv+wVGkPjXxAfpr9261ZH9l3x122e32PwqILP6VKd+t1jd9Wk0LLaNMZSrX9uSWSL58+LKqstW7+lWCDYUfnH1G0U+R7Na5wF8sqfSf3YXldbmREcCo+2BuyVd0MNNPNKcelTpLt8m1+I202XYFpajbCRj4xS7r/RbcuZEHs+ShEz8y03SZjEKCZXoS+xU2dKcNqfrqAMj82q1NW1HKXFE/X1UJN1Z+7iVtk3uPhNtMaLkVXNe8DNfSIeazHrOHAPi0Zb2sfA/q+QvMs2evWmUzgVsbt+/XZM0BGzclhnlPT5mgvuKMamcrIUDp184lIv3nvIeA8/koChrPQeyHTsYrqhtr7eEQWqDLcAYYJe+Eybbr5ddCaL0gUjLkdJAA9rFFczMkEhCJgLzrdQU+j5689zzGD69U0LVq2qNU+iz7eH6zDCHvbwrjyLvvEnlNN5F1HpLSFsj6pDvyXc6zgrtQlqS/1HrtqFxvyl/J8hC8KyFMZ8J9FuQsVvKOkZNPLV1HjG8y0RH9q0Z1ZraOPNMCiGP9Lijj3spTFa2NCOfseazHaoI5+jFMvd+wtAxQaP3gQNWPtd21smRkeTC0s4NB7WtKxAxb4z8IEr95j4zszwNnugF6kNH2kWyuwFe5RF7b2K9W0dd6jxzQWt19HbtN4pv3iItE8ESYyKKro9wiDXaWZB1udgE11pWacTA947YpQm8c6gZ6rC34ijPvIbbCYD06MztSM84ko8OMGl/Ty+Mnl5/pY9uiDrfSwZ7E5Yf7N4K4mAb2CgTza7DOnoeqW0smB04feGoA5qXyfYQnwAGwbXXRCykzpTBpVGSWGeCADCzrDd/BGWFFlKL+9SA7IsOrKmPAtWzktjmy5rm/wd5yjCKfTk3f5qyf099grFNfUYLw2p+5DKSg8HQgqBLpiSvvJk7I2vuQLuRyflvcIxWyfm0G2jgKabRs6GFvMKv0A41xXs6OqcU6UOWNd/jYqfb46qoz7WJtr1glQzlpqE8Y1OghofjZHIXkeqYoIRzzCH0HhiDrzwDHPO9Yl0DgwTgaVmbasWqflOMjmRgrTSVSyqa2eQJ7s00NMVhXi1qK/4ZaJpYwmYIYmFT66T9CioU3xamTq8JYLXqSj9Nk5pGTyGidQ+NwCHFlxqeGIF9KgbpIu27m342Pr2keYrqA9+stq1LWTxw5bKlbuS6yQd7kajISQ2q+7+/Na/c+yzkpsDdudtMnrkKv6spEdHOh/ixQwq9ba+fqPV6nM2EF47L+NwnIXsWuvf+3n5+9vaACfzm2T0ownVsRGwSyW6KUtUOLeQmanckDrsYXfeWTVGmyf5UKOzyl+22TbRrfjTr4xa7ESDa1yzFthKdoBuwFozrOa+Mhj2KKxGWFfdVUXa7ZLZVjw4Xz7SUbeitJgZ1+H56uYxIcYSyslPIS+fQSLQl/XeLc/TY7taySxzLt71E/lbV2Vo9i1X6aa3yn7UXlo/MDMFJa2pFPUn/OiUptxtBqHdBw8V9HCpAAjyllQfJjDmqAEURv+ZCsjrXIWuktLKyxSaQd3sFciscDEJxzg7LUaFu038AHo9p1Nt0S5XYOChsIHgH2l+iRVNgOQ/NZHaIx43E76qP7dR831R7KSHHX/nKcymKELWcTyOA++RhIoxaH7nMYTi2fd95h2Aep8aNmg8Kb85oXwkb17A4xswM+xGG2BKByVYiUD0VpRhTdsH0NZczcBlqr6I9Q8EsPdnZujtORgEMiPSUlU3Pqcd17JNDR2vZZAPR+lW2PNqGagkVGZMQ/NxOwodDyNQmCrEfSSNrUCm2KRlYyjUK1xUXJXCzTG8Okvs60MFhkipFUK1MazK2VMrqIUAm/5B2GnBjR0K1c/cFvxO17gWu+etJWNq/++19v/muY+T3EtH25nz7jiTMWBuF+zlJfilHPJVl2Ef7B5/obTFnOV4o/dPceR7RbP8qoVfaciOoeI4L012NNCOck58iqx3SSSLTo/S1U9L83Vx67fUVDzN0nNkNz8wBFxhgtP5oAixARk/EMQctN433k34bfjHE1MuMbZ9bjnQd2t3rYY1/uXqcFnYKWfJOMn7bl5XLhDWAfhrVZ88FlMJYok1TBHcgz4Kg0STOVPOM5Qz63NkMpD35htB44KK79ZgsYyqTkMxXSgwsiEuYgl/MVGeVtWzJiPkcvWnKSU9PiW1KIWuJIGjoIJ4Bz7t4ChCDq4pW6w5sSc2M3XA5y9O9mTKM4UxC92ceBQ6bsUcCLLB96C161PmzwObPUOMfkHnC4JEMS6mYRc5Z1ZQ7Lmr5qrURIAHPJXQzs9VbVGNnZZVX6xlzFr3Lg8bWA0e6LqCOJVX8hxP3wuRfdnn7uQ5UOXe2qv5Me8ckCTsZ28vBdLwZnyt8sLsCxda6O712bGTYhYM89/lZj95kfL/alipCuGCOyS9zIQmyxV6ldNhpEhs/FCHzOlJ7zvLQzk4O/mXblXKvPGAfiOYdIv6BmQy4IOxuGG9jXPVzy20vS6C0pmHJ6RInVLD3JlpXuT+3M2T36eabC7u4dw9G2PiVzyXTHOIFEWg0BdT8Q6pDYCTi6Nau4nFTRVEtS3lJrj7qScnWmQ6MkZOrqKJn0IqJUtrBd4Ag+HCKUtsiFg8F0Rhs6EMloDE4zETHEd86l35A8pc6W1XQtzszRhCiLo+FlKYsYRhu/7Z1VUYlQt2o1FyiMPOE1wy8aI2iJ6AWZAP0nJ61L2rmWu+rNWaXT3C3IwEKaRPAzEqZVKUSlnXlxLk0OGJYnDSrtzM5i5qtJUputHZkEdKWrXrGsav4vUXnVtWlrj7lew2EqmM72bjPbXWl7pNLuBrQuf70eywUq4URK6xEqXLzZHKtKizNlHA4DjHX9gj4NVs0UDBEzGobfJ3moMITpdmxq9Ae6qsWVIdo0ylHaL/REwhEr0rvLutdkotKNILay7YkasdLaY/P8HobxoNGCDlaSydPyyBdaiwN850kQjqxtmr4hc8lQTBP914rwpZiu/vNXKA5tyy8zKILHMeIMyIqZ4Mi9HItYKUQP5PRMXiGmt9rRtMcfOWxU8SZm2aTh6G1kGp9Fb+jnmp3rXlqCW4EHRd+Srn62hf6XY9Zsb2N5f33kNCEIzWt48/9vOmHwX/2AgfGOcE3AlBdEH5Q5ZOvoMyMNzXKFrrYy5mf6Wn2cvCmE5T83VZ+C3U3NzH7FxtrSsZ1xzltWZeVpDEaa373PobQqDz1uZe1pQpsoGvokYPYy22P3pkLkR7NEyznU3Pxq3vH1WtCcaJ9czuujqRC4zk4HkdRTSSt/bYZU8C27VpagAOVeYgiJxdscRbA++zsYWwV903NL1vD0EEe1csEtJtfNQTFjBOdYaLjeTxdhJgtPVjRGQzOSAPqjLVuR+wmJmrr0ruXqWe5wXkIZmZf7X3kCzjIyVq0y/3pbGtuXdHAuJBWGQesuWZwDfFZieCVww9LB1xzD1HziAOW/TDY222s9Ux4VqU2T450JxQjh+2IemP8c8RsyX2sOvC3grWXkxr5ABv2LTKFqZ1Q7AKd317Hl29dr3RQVpT4+rJEHYnOu2qPz+5t1OfbR+/xY1937mecZyc2d+8l+GW9aevf2gZ7C1Xj9MeS93e6Hkxuc/P0cI3BjeL+q5+b9264gP7SGjkQxtQ25tcnQZvVUxvtJ9eueg6vkQcVSNGkUsCGPgSS2RNazvAa+ja2dgaGXvY9MKJwA5znCoIQD2hZ4H0u3hQMvWRmBkrQhEoVHwK3l0MqryQ9XKCHvSWMrk60XIvJtaxNs2xeQ9JhhhT/BWm7wPbWPSAXafY5xY2ZEXL4MU4VcsxA1DUSMw4BpkzHKLSVnqJOPmvVYqsgk2pGpSiOIbGeRzB98ISaS5SWXDwZeqirAKWXOloSYyTU3FatibXWC/gZTxOUMMmaMHyQBkRe5lRrzao0tKOcGEg2DgDvbccl4L0jevhQCVJcSrN5tM77EFPkh7XTz25/KOcY71DyFhM359OY3LI/WwkrS8QtlkoJORVnCj1Djl+DhjGiqJxWZbY0W6uuxVWGEbrf9ranCNfS+Nj8xs22yv+hIlazh7StHGMDeG1RtNCTAMlR/n7DHsbNO2HRYeFxAXAW9ZdctF7Epuk9Elkrz/I6KKZrqdif68fbTbZbWOBVgQaCl0lbzcxXYpprCKctiDmW+wjOIEbB0oyRRtZus0BGxopQIAEWtO6VrrZ04+T0Z7vDV3wIRJKW846lXzWVu2cnpjW/eUrc+9Vr6bgtPT3NNzvSVU+7a/mTYONbqq+ntCL3iVa0/fvfn31MStLooqcRr99M7PEwUtqfLbzkfgR+UTSL2GRuhWsf15bqZBzgtYHiXw3JSJqyi3eXtjpwqLuRZVryJ2FOXe2Lcc0UY89JUTq519bm+eYHLRnRwDs95/q9aXMHMS65s0efdmDg1WNvwtZdxr4pFYsMQVMocvIzAZxF/CmdvT2uRPCyyzwLrO/kVytjbL0A547edR4CSXWVIRqZytHNcKgrnpVck7zJcVYtMhSFlQdNPQF6aYBCTgpU5fOQnvdx6kSKs2dxFlJNAgmRLjdKcwe84AM/LKARN3uN1TEEvzzSXEIPQNnA5JoC6l7pjEv8a25owafKlpeTPgB8zkmlaXQ7HJZJzw9x9Cl4Wu5zG1hkda00/nPiWVMtzcOAlXnFUwjU7A02zpC9w91M7lDoc/n3qjQrla2eozSZizTAbUiT9j3+21CJjRpm3UPQwaaG1IfyugT5XHjgLHXV2OjpGTSEzjs6I+oGdYXxtx4+mANGDoqZEj0u2dXbkPogEWqq3stNyGahpLqQb5lHC/pAGE+fU1hCzecU33wrDEMq69kzCnTV6ktDNvUht1KnkuEQXzoyNa/yDLm20ufb0pfWp8bid0AC++Z7ti2np1+9fHfY49dEHaDDH/JNy8nKvDTzuZlPyIPaSG0MkYDocgWg9DCKYmg9tckGVtJubx+52CrF9zqr0t0dHd/W5ugroKHmbJHhyfXWtzbqW033ZRyzYaGfWoEC3DILNdZ61lEDI9YzShNANDC4+FEJtdJH0qbNrNk8EFzHPc4OE3NyZqowX0LDJKePwStuVSNdZZlRM+cPl41wCBaevDtHOTvf0AXoAS7bBYcBJ3Gp9IGotF+2vIM+auT8ZiOxVN0Md46tV62o26NUT6fZxqLvay6Lves+Ix6VEqS0LPlvwAe8Xur7WTicd8qB8nFYsDLVOCqrZ/fLepI6ib1xDrbwu2JrBCQEBrEScgIb5Ci21xt6YfPI9lpO7BfFZur9hDiaxy0NyqpN0dck3sNkTeY2pP86kbGsN9YbF0s2KuKH5PjoYvsMa8xAGOFxNjwG2uHpyNx84bZ6NCJYm1nNScmX07NhuCBx05IPaXzWtOnjejpGHjOq+b6LIHiLeXKnluEmkn3ptHoniOw8aEcr51aZ79nDtXtIY0bkQK7u3K990Gc2pbtjRTpdyHNbeefE15/gOeZ315+/7zpijqK4D9y9C1APKt+67Iffji3uXT5vpV16g/TNXeYtP2gLffAssriP66WXdMGqp5eNnZJ/RxqWsUkvrU4guZ7cnzJpBqQmYENy421nppfZjeu46a9LOeJr15oQl+Fsz2XzFF23KgGiABMQkLNV0XfIEZrHzGnhe8d4r4GCUpwnHJ/DldS/mplQenEFv+1X963V6zkr3iqslDSFtYYMKACFEwAbmMq9TB2ddh0Kag/5MznrkvA0EW1AFZ/qN2choYqW3Qo8N6BSKVLw3OTL6jqvm5mFZaZKTMddPRTFQCvPSFXSins2+Yjj3eAop1WMuOAQ7Y6IoYadDTWHVjP5UvZKAZsgTzP2FbvAiNK7kievRscM27ZM8MIqxLDuSl47dTRl6/Yt+mA4qLme7qa9HG+e3kTE+2wQ97zt2q67+/Oabh+GyF22b/XAt9LuWuWX6/W9yqGQK4LYMHmoTIcEBOrrfS3Dnb+255Vub0o+E03yud2fez4fiNqm8Nu13EtAQxUtfTGKldVR29LO9/sqi3WJyTYwiZbqh9cxsPvVczNO1/JsL/9W2GI3zedGuk7crhdtzzgV8gqSGn155jdaYonSsusL2vZW11EazJN+1ldaFWudxWtKM9kjtV+x+ysPilUCgQFuUmxkPXkneVWDJJVoCitMypXf+hLc0h6epeu17nIQAHE2ak6tni1RLTaghd5KISy6ZnMxTb8ZOyMCOpRuR8uPSp7V+lMtqdBF4XYw74MsRV2VS/g6ShPJjHkaIFhoRwT/rWgTzQ1AjqvkA1K50g6s7VhoeCVCHjxGmilpri6ydrf/smlFR7r6bDeZunMxbSzM4FglGSh3u6PawHUL5DtUtKsk1nTUcp3t6lnSRFHM2daiyjlSliBPE/VRItA9oEO/F2VzEVb1w/3YwuquNcVabTWbkcTx8yX1N1FpzS+3vjcqN1aaAS7nxcZIpLiZfiGGJgDp+Csjmh4TFvn4HEeOyMqaBDgiXjU2seZmnX2twa1TefV4tx5nQ4djMBOey3C0UE9mvpwkSfVjAjc9/PMMWqDfQm9lX2PjZr9i0MokdRiwFoXEOqdP/Dse4O/9t2pC87ldu7iKdvq52n7uRRj/8r3u6yjLND2KS/lrq2tvnVqH5l1mjrljRNfe6vYv8cT3Mvdvt0zu/jOiSXMyVdCS9jxZrq7ZB9pugwFR3LbiOlDPrdVnmCupKbmp7XD28acl9qHNd+Ls1sYLv8L+24MnFvuu+7Y174oE1RMfc0qvS0k1uirrxqtuCmsPZZVDaGdvIP0uzlcCjQ1arZQEbckvPsDSnGp28SYv1fxwxasx4Atr8H3c6do7F7b29mjRaoyH9dmzVZ+BnnRWUuWquB06xLatqcQm1QuKNymX6sPHvMRfqipeHBA7VDE2jIqjpOzNv/Ne8zC32baya/UKdtJ90xAZQlnEq2d87drjkjqeVkahPOhqgbZHnQpvHUR4WcuD3ptBaymxuDinwwtZpG0pbmU5H9fkkL0ZVGR8Dk5YGxnQfA4FC2zxrDp1Fc5r6hOui/3C4ypnHbwk/dGGmrKhSEsirG6tSYzzsOa0kTgPZK7+aOv0tD5d9mEu9lyHqBQlBVxXq9qDqd1Zc7EDpmnG2uWUB8MIDboEvyXFkSUJ2cIVyytDxTx2cdstTk3icu4DnIvAhHNxbeWKdq7ttE96KgHRo7TVknB0qQfntaf9ChDsrjUl8XZ+vQuztE4G0LUeaqaWtDRdy1Iu5aMs1uoPdqR9W00dST93row/Exfn1SjhRC2LX+Dt0jLbRduftePe7nIrUlbgdu9HuVnkxqsl8+24NcaxVvdA6+5FRwVoTbkUAYqvxKp7aGo7+OyKTnEc99jgIYFzwe+ecmsaAh7QsbH5tfNZx3E3zPltUFVtvVDtQ6nvlXxf2ROOm3PQgWKZ+xipqFgWpY9eCtcJDVHD6z+kwNLbbLVIXc+kZ58BK1NWAXs+Nk4XJEK0Q/PofEFmfWg2FKiCGdtOz1AtsGHoNyS/VBcZ67My+jPgAqbVnEPW3M8z6dcuhUvqEAf6NHGGlmznD9UylA1i3caq2lYeAWYHnTTi7lm1NrIXLC1jk7zPVGIvJLTjSHeNhGeiDcspWhVw4Z2FogwDtQzT3YgibCzHcuzB2GCKfsmuoUyPTqQ/yY455Hy9TDlZFqcmLkv4OQX41P5WrWOWpe7VB5zuPxqHlKO36mn2OtxVE9davdFswN+9VTty6A5dawFuOmPOFCkTsYuUXRfic/n0Nrp+ZuZR3Zh77Evft9vS7nmLBiO0netrHnc3MoZf/Ii7aYl34jl/B7D08NHCq173Pvg5iYs11tZe0HVChUtrnvsm9qRdSZdPpuhquKB1FbFh3SQF/xm8sZsOLzoTAF/7W0G/M7mT33igdM1oYPNe/Jjgw+SKDsA+VPy88wSPErd4V3n62jqexnCFG6YOpjVeRdCYbWCNYWcSZ2Q6ZG3TLJ3xoxj961SN7RlRHEGqzkNh5pRvzVtDOBvXs5AgC5Ir6YJ5WSqtOvKrgIEt0lgCMaquKQa3qidkp5/RnD9rjJ0eirMaHun6C2PLd1QXTCHlFmRmMdh5VaVMru4wZXTGwBafYmkHz7awLrktOupDERxZLVkXMdg3gMhCwGt1Q4RFGdmBl+j1e9Rugy8uBOH+eTnTB9dt5uMZqqmTl9QblYDgRnOxsX1uHNr1nVA+aynaq8rsPOOc5nKDJS4YE+E8VkXey+6vpmMQyZykrdJ6bcStgSNxuyUA0C4yqs31ZqszJoyxTpVA4LI0tB6krmfM2FNutrnk/Mh2RaLjbTMYJFB+Ki1br7Sr2bBJQTT+bbIBM6f4Jf1ndYxfLe8Ga6CDf6Kfmej/uhlkKiqb+fiIaZqrQjDFtiMNecGAB4PsVTj5SnCZbkW/ItzE8j1+wSn02lf7xTquLY+hucwzSPNu7tguRO69fhb1Zg0/f9K+eP/agruT/b6qYQjaUxyzu5e9TTw9NPbTTvzStPjjVZqGL43+qqyrmPUIc4jcXNlDbhxWvy7jQda/9bUbpkVrR8oL8UeLUSTfqpfIcuSZVFJOuJBmuF5ByRcHVNDWNKODgFxOdgQc3NRP1nj7AYl4tImp5FinCVRBhNoBB10woUTYyjISUZuNWvEcBm96xvaZQ1L9WltjAAotkkSEs6DSf4/Rma0vC0quqnUcZI3uFaEbD59A2sxWDik1KPq6D1GgpsJdORvbrym7IirIIhSY1rojE5DV+litPTlC4s1585qxwcSDdaaZAKh8EJ6jui3HJdGthIUaQkjL3hB0W91TkLtPR0+oxoGOdNI7tZEaOtg3yLz+1WeKc/dP9LhMKr1rS/MzidKVKse/exvvwi/6znNs5yZg3rz7FUxSmoAQpK9HT/WYKYbf9eBnHHBy1TXqv/PdwDUR1kPxl7e/7tZd8PRzq+9AgJ0X5ZK/Zvy2K0SiAz/6NLKkkvTc1HMzmMB1i2wb5gunVeVV10loHWVywtmCu/Y2Hwg6MAH1ZCLjVAu+t6D5wdsmE6+Vh551kq6b9gJpzpRD0orbMWWXa/PzW/dh21IBfl/0s4607QEqd4B6cBE/c+YKauFe1thoSaek25dRqucGZmFoTdBYcCZ79CHr02tYT4ABPeVoUl/IM1upcCF5MUQTEoDg2OTfO22Jin0HxvNw5/Sty+UVh5sdzC9k5swSe6OGJpyhCtjSecgv+5XdKtrjw1TXWkfddWDEI6mWNJdfqYZa1SWvXf9y3fPoTdK5r/ejnLeP+Hhf/0I2QMu6ve1MlhR/G66OPzW5JXvs6e5pnzmYriDrSinRNHrIBCRg7BMRuegSWxupO9pXqoLmtqlc5UnQWeJMjnmMWjsZSiFTRRq2SRiB6dkPXooDxGojq3Wnv9EvYVi1iIuhQPLKJ7s0DUryyKNmgbWkkOwKAPFAMPZGxihPImSgh5Q/uWthfGZxpnElrq7+RfIXEf96uLr/zvqk9GjT4CAfukifRDPRmHQ53zyzf++td68c34kw66HE51gor9L27dlC5946Cnk7aGBgFvC7gPm9h+ejoChL+EIwryKSoZ2o2vCqQubSvsTjF6Fok1PynHGNQsIXn9h/y3lmkeEyNE8lFLdd/vjcxBS3ezwWbXvEgLRqjxHzm7KBx/JT/xoxuNv4U1LZetpAIGQ6FbSI6ybHutyIh32Y4c00OU5jFgRtVS8SiW/FdZO2twQpe2fmJjIhFp6C1o+tPS2K0vm0oer48IiWerrAj+WaLULX/YQ9TivhQyS04BVntjEgjshUPd2W0NailJFIG2eEE8WYgr7l1xoAA2moJ/hida64lad6wAzk7FSsGZ1KTzEwoANcxTGvJRbWfqoW6WK38mlQktFvSIIx8oG1bamY02Wep7hmAooQKh3wQ5SSTBZK+xJSgJN139NPnpOEp7wfyOFGuLiVeG6VpcEzCdfQuGIf2QI8fCVYyMWOtFPOKx9ROqtIXw+4QTcKsIPWtHPvmtlVU4undVE+EbU7I6C+NaXNfStOBPSek0heBVkKjvnvHL3RJGnAXc1DC+OquenpaNHgyLAWqxTblDZxSY1Qyu65tPMX4Ge3bRBkxlw0x5sO7NeHV760oAWpEtnLn6/cFX2UzSBK5D1qdoBYoaSWMkZXPusLaxdVfCxpGaEPTb3ol2WhfdPpy1bpGyJbOjhdzd0aXpFTDepzbvX0QtttPH3uEHWB1CP0zdbnRbOn+XJD2KUpqyAOCIfUAYe2cxN8dv6tLZI3NNNOXfWCiTuv+HRrZeL47pAmoSJf2onEbtH32dKbaCmzPntQpAsX3UJTdlVYhwxJX7lZlNu/EIlGEbhZInmZ6yE0mhKpH2ZUL1NmlbZ2rd9zDGpJiPG1OCJBBZeJXF1mtXlzWr2Silt5VDboM01WcZktpN5Bjuq6V1ORZo5zr6eXzaiftTWH0zDla0ontFFVCIC1t+HwV4g6zTrSZoQbt8bpQkKqVdW6OiSFfe+nK1a0U2StjXp0vGaIRU30087uTnQPmi+uXRwwVHyVdqhIq0zD1lsKnsuEUIrWU4ShfneRc0uZH3R2tfFKlaBJ9nnNq10zWUla1zIWaAlpCHjkGDo1QyTGspMVNh1rwzOlE60cKe6zdraRsV6DY80UXnMjXfnRHY/fAyx0oO4ABcX6rhv2TiSy26fniutTma7C6MjGtpX9JK0oOfnK4+Iuv2t9boShPizmeH5vvCmjb/BwL9XDR5lKX569IEouu+WGUMqqXiCw8oi2h+6h++gRdnAAOAYIMuX9u+cB8ETOuOS6A6uMK1gQtw/1Od/rxWDrAI7QeAc7uLT1Hkk7tjsj8caWsniWOQPM53N2e1XgjFLpNTStBcGnbHCuLWkq3wOeZNo1T2fFxaZYMSnwVkd7avWKcpHiKrN3PdEDptlJjwqv63CQ4QWYOjOjfVeeiM3jJnU6XCTx4bNoATSQSQp25zO1LnM0QHLFAuTAfCa5XGXlIZsNhqABbjO61GVhbtwsL+jTKzeO1+zMUQQILVvNaHq/ASYsgmBG8Q+TlhRXyRXVm6DbOMQyZuVLKVgJbYMSKMJSXvMjd2u/JJzTLmDDpO7XjaSqeLdBdZRpNMVWop4QW+JdPS1IlkoCSFPlFnHsoJR/dF1EnKR2ZsH2ksJLKt864rKQuu2VQKuYbqz9dd2lVoemiBjv4DZfZRpt4K+Nj7D2+xrq1r3Sv8XFLnIpbpAWOdV0WiJsc6aZtacbLlrBSN6VRmtPwUw2DFriq88y8zqFr7UReaqF2479ERWy4JFuXW0IXdi6ZnbtqcSxS4678c4aV7yQTRg0HCxFwDk3H5Pnaot1+4zFK+2eYmgDCbu4ta+46/Vnoev+eb235Xq+8NhudYU6S2H0/L6ve98utpVdLbNmazdF2SRIvKq42xUa0LLvW6czI8eibFPQ+4M3m8Pb3rwd8cHQ49RDoLUJG6/0kqFXBC+q6OSjjMuycep6QPfsamXaWjpZ3wgZn6OqtSnJGcO1HTRzFU+tS7nXkXa3nRwGT4pznezeXB3Ux2vtSWx+xQalreLPMBbIGPtNyAM5qdvhuhxVrJrjHcEEq11TXWWM3aI2/eFaj6haOHUt4W95zjsySlohmcKXlBdupSbbtcEH68nVsghrDX5aGWWuEy+ZG7TYHvTOhdG2pkJukBRD3X3UsTC3D21LHszF6iiL65Kutg010QS0vn7KD6PhiRGFXKLm2LSjjf1wpwTL/gqUgp1IBGrnACzzveanTjWfnGUuJt5bQjwmbe6Y2n2Q5vWd58rIXUrYwYKvnEYnd5i/bONY+5vam4VH4p9Pvh7vzt6ZbMHn1DF72338u5HcShqZpVmH4C1cdU4dL68rQ+eJbX/Th3x+aupzieQTVhsNQBu350Lm+xvFl+8iJWwpG/VzSRh4YRK5XU1rKvl+1qelCNDSXOba2u7FFCghOtLkEncLk4qu5hEd/nZT2ZZtcQUmgAlD9BvaB9KAPehBTJVDl2IrY5kRmOkUXRm8Vjr9jIllPqHgvhr9vLvt1Bs15MHQnMJT1Zp8i/1FAwL7lPYYAu1+O9ZNmhPr6DJULgLrb8BUsRm4R++DPg29uMbglZ3S2ztKc5uJTmHpcBwmQT02o3ZrX+W4My/SUkcTi+1cffEc/zpV/J64OcwjL9Q8gTdWgQjKbJ1Btwn0W/BO1rdrUp1xVl1z5SkfvnZXvWY6sc5lruTl7hrjS+c7GEu4TZNti6Pgw7QaWWASDbHUJBmMxevoaNeLYC0UPtNnDOFoEo0VSag4hBRquMYprsyRrjZdJ1t7sIrrjtyx7SU+VbzN5beXSAIXXr+xfRvlrBIwo0mt9V3OZphUtHyiuqY+9HhViwvJlLeFHJpxU5u2sxBuZk319iPXvdPegh1JVKcdAhVh1tM5JZeVQV8XvWnnTfxui/TQHJATZ3NQZ30lkt+e2Nd6ikvVV66yr5xdudeEVTunm2XYpZwnAWu+sWkem2h49+ZVeL2W3dqRDxCCY79rxnHtSWwd79le194Or+m5iizUvsc+qTvPIulsh9/caSbeQh+079Yjs8S3DtdJne9p9+91tlkWRjou20X1m4G9K1e03+KmV/1iL2tH86b41oCD3z31MXP/cHInxlSHp3IaRKK9y/B9lc7jvXMA430dpX3xajthSEQPdh3qOqwtGN0I9JXj1FPACLfb9pgI9uN2Rp+8olBEFO8VNnnB0eeA30vim8JDo++ZekgIPUtoflvGRLFJiANjtd522Iju2FEalJcDgS0mMVLLbUsIADqMwmeC9DqTXWpq0SPPgZ2zvLVJ4rHOEmMmaVw8/HBNBx91qomjAIfIbTwuhgLUgdXbyHqSe34y3CJO3vF2Z2VUbNS/WhYaWymXp33cq8G7lnO16O/wxNfRoP7FHXt8clKjWdPC82ehQYHphtrX7oI17seA87llivO79+9K+1lUrj4Z4vC6LXGK0gBD22OUpmsv7+tIrchmWw/MU29jc4hQ+wS73E3zxengK3liH5utol5WnXJdnZ/0fsF2N+278pMRs3kjQDzhTK3FmpQ4p8S3g8Zm2bpd9rRdOsF68sMkjg2G7x99rmWJGbEK9KmwUZLV6dQ8X3wHt/lvJZkUb1893aumUn0TQAXuymMbMpi9aApKpE48J7yjsUT0NCQMgdIdmoIbM6SLmn+0Rim5TPPYtIS9M7yxk1dlsEaEGUSZHpuPzwtAkGJnHeSSh4/VyIizAfXPKXy2xgNR9ffs1TU3oiP2e0O9r/VuIN3PbzcUbCYAy/FflYuqN9fSUmWlVNVTDOU6Kv1pLNwqyTHsSKrH/IrO4lLyXHoNgrb7CflvsWBlyIUArgR6psB4jg5ObLB7xBJro8mCWdcNly1jfK3p/tcF5hRteCQKhkXnijG0UtyhBFl/nnU3ZlLoTDkHbS1pv4C2oMg0izDZccGEGFyWqVewX/ZIx62eYfvcb3QdrY9pvFiPV8smvRGvhsK/5mnnsmg9tfxZY9an64ctcQyDcZWU9ispxbQ1NME29DA26BNWaPDZKs8rl9zfd4r0vK/zvK+9u0zg+LKseOsqrF21oa/DY+7Oi9U+3elM+jmB4nxPpeycnYO5v+I3367txRct3gttojWloF8RTKXMWwhjqlVfDvKX9/dyt/dmJM/9WTlfVb57nz53/iFx52Pr9p7Njec3d/1Sln20mj8TXREJaqLZU9M8qFh159iWIRkiXkkGkr4EAEbSkrgzFvQAvdvyZHGigBx1Qa5G4YyjuWy2OVVJUO+sZ9KrQE4hnbSx7Pmr71knBp6CkIp95Hu+7Q1vC49NZ1qlixi8oSxT6nlYgMi082g5JQGYlGgUd6UGW8ygbwDPYK/TIipjLMt3nPQlPdirFoGWOw6Pc2Az3azXs1xRG0V2VCSNTIP7QeCgoIJK9VVuECEwLLgzl77wLuTR8jeB4go+FM4tp0XyOUyC0J3Ah2pO0wLf7jwTf9s35bq8yetTxdZNquKmSW3S6dHmvYz9ar951YKukvA99/KtrP2OVS97TNal51dfw3syfrX/tEjaO3nR8GoYJz3s5P1afvu1ycIe8aVVO8XqFH+DJA7Ra/d+uOMGIXxp603MnNrYTWAzrOmJwJosC9m7zF3WeKo45lY5o41DUhI+TIqQO1FbYRt+shG4/dclsG9fEnyeyvZ2GkWp5lRgCi4AId7jUqrL1fBpX4NYFwDg880hIfu8w8HXGNdJ59j6UKQVVs8ix/m0kNwKYhm/8BivyS7uvBmSdwV2jnUri76vJottSj+Eoqna69KJdJGKzbB5kVBmyDbivMlp8a0tVQkiXNvkObMeHfRp6dpiVDtZ2BDrWyrrlpEIro06CUHetiYhivLBUSNqcR2VqKI8PXh6BgdeN2JNwBVsuCzKMTyk1+TOF4ofUax1p7XwdolpkGB37HwWCXOavRaOzKLn4hfrCrwy+9xxMwpYUj9TjqjgR4ihlsTh2qogF1btkeDxDJTIdouvjOy1TciTKLYSbZyNSKGToutVOGe2Ofergy7B+gIonEmvjk4FID3goiqxMPOY7LW6OnZWb1iGhtLv73NANTWxulqxEo0h4kgI0aglYAIobCLiRZFlu4fQNYQJCZC/ljF50X7fP9rd9CtN8tntciryPsrSnu3K/leeALPE+eZXObc7hhSPrb1+q8l8bMNsCb4oeZayH3pjt29dud19ifN3x8iGVaw5J4W1dRnjnbPeyyH1uVfKXfpWjk/17h2HVNnBTBek39T41QQbHcpG+34GkVwxsdseKU9f8y2b51PV09LxEdi3Z+LpcvjtEulafOPKq65JUsjqfardl2msVF8pPO3wSeqrJYitUR95jwNbptNJzeLNyB4uoPZl8SFLc7dxLsUmzMqy6+QiFPyWNYxudby9nI/k+4YpoaEWpVh0qkSUwtAQfTyT4pCsQDCbAQYsPqRA7YFFmpFNBF5GB9i2W7m8A7pGWHMug/fhZ3YAdrS4pYGFWIGmR6W3dOvAUnxXbETu+6razIamZGDTHHQGQ+gc6sFh1Jn6nePIWGDAYFum1b3cO26x63LFB0S08O2NCxetb8+cY6ZwnB7kfluWkrOvuMc+bhp+NsnT/lYD9ffi47XXwDV98g523IM1PT5+r9z7w+OX1+WLCOvYp/giIhA9XXFmxU19SwvfERbqYX0WVRQ/RNBuRUfcPtBz7M8sWG5EWKfhRxHNRZKV0z3TMqE32LzGv5Ps7i69m4j4JdjQy8GvC9job618wEpp71Iatt4X8Ez6iwERU2RxCYK420CanwAc5skDq9Q6k0Lq11LbuV+cHvXtPHw3a3pakCPvHbDjP8Ev84giZMbxGDbTZ4ZUPu90LcIHRNF+2mIbR1bXTh0Xqc8mUYNoQdt6aCuUSSkeWXgOGUevIVZOPhNebbpVRmIpAOFsiR9O3t+LXmWrNbb1ZRhviY+QHZYxO+nDixyXnA3XUfdxb8/hMBC7baFDtlTbjPZeyFLMQfCaJPUw0Z6sUr5bDdci+wCvpZe4MNwVnqhvbnNJ+QYLDPG0Fv8MZh4QF8WWUpVdIZeJonmdnW5MTXLIAjPQoaa1wARsS802C6f/IPhKe8XR87K9D+JV5U9TJ+Z1uiwHJoiwJfpp3WKjo+RYmSjf5tP5THZwJiraFkiiaKabNNxTl2T63aMbib1pWy/+dnJmoIpy2ES5HajIo1/4zsdl8T9+/Obb3TOTzz+r6H4hkn5552tB7rr579pzV9pd4rBdI11fupr69mZ7FV5I38+V4a0FvVn5i0XMHsxzkw4pqYXH7kWFVKPpllVClIuAczPayiPgmJkES266wGVDE9trmkebblM5+cb+mM1kJdfWY9udDzXcmVjtUveT5J3PfQx6P+ilIra8cw2ZsAEd7Pxrio29DNT51D18te8U7r3z7fnvBJrz0cOvtXBYPXvUPOjq6hpLvrMwAO6VWrnD1UT4C47nss5z0YsdafUqqukREKE3TUSEDlFrNTBvzVm7PvZKI10j8IQHsQRHYBYCzoXMSY14Q+tev7uVfZ5E9QMOSKStLs6la9eGrbRtVC7P1qIuEbU4iFUox3UfrZCtJ8UeO9msBd50JzaNbI0XmvvMtaZrQw94AeScjrBfm/jaPVF9LoSigoby9ZgbW8Kxc6LF99s6kv+4WcR3QRHWB7enrH20mjPERhISzSku2eHayUiE8mWyvFs+2kyeZxoEVZO7obuAWNtdnMx74fZiWz1Eg3nbpO/gbuBy2TApeXyVHsOeVRIPJxmY+s/mM8w6XQf4ch+Hq+DX7dxnb8cbQW0pkNTWGkvlGRU5V0QBCBurL6ouA9/EIFFBNuS6ypxT025RKpBIusm5zIuoDCY3daT2qeuH7hw9fxJad3PvK+Hs0kZ/LiWWyjNWtszd0/X0TsCym5LvuPWer0LnbicdOpD9477Hl17b5X27TNUvfq412nDA3vcLemn+vKJ9C7cUbscI8buYNC4AiffGG1yIz3dZmvTrYXJkH1Q7nzA/Fr6hi17CJTSWtbaPFLbVfGAcAuPARwO6ho6Q6uX9nLUhlvYVDphTJ+JcXuHZO0ws2R4B5TZUIryVCBfPdLjZzULNKT9D3HCWE+CCRIM6mGBKl0mlPqkHY2QcyYc9cZAAg9uKA0GjtrGw6s6kweigDKa4FJU3/ygn6dK6vhFDlW6acAywoyGPGImGCLzb1z3YUCqujAF8gOim0XJjglI6VG5W3aJWpSSEvkfSMoeDdRSSpt6KeWheNcvxCT31WByNCx61oPrBg+OUoh43RI/HLbiSY78G2PCVSXku3V+hl9et9XVKqnue8VT/Tbah7XMK8nQt2fFCLxf/ktfN66eUuXHUv2tMmkhRLBuSwsO7eubHYzUaTwpsMuP+7OLZUCnWHFJfcdL0YLixZ31h4fKj47bM1339B22afBJDMGJbbjOnKy9PqvjQ0ek4O3t+0x7sR4k9jbNU+LEvxpqwm8SK+hyFEzoftjvUeG4DkG+fwdVK1TReNJwe7Pq9M3OBIaDHHY4WhHhRT8ZTCwcP1B5tVi/qOvcWASn00V6tlWHsrTutp9019zESDXITQrbMP+DhmT0Ha+SWY50T7qlcENVaeijIqhD1XbQLUSLBWZk8VJao5OWzihCu1m5Qs3Wat311xSKsxGJ1Q0ZVqM+B4nZZNp8Tl+iif8svqWhyG9/l+cZovZyYYQw1HoF9rm/UtYZe7yg7n2GPlg6GPLMjgiK8Vo87mfAxamwfMZZgdZoqlV/fR9ccp55UyxOMZ24Z5KG9jKvBdZaGsNSTVE6qp+KAQ9JekgVc1pa3aLVpXI6GoytVSzzts0lTOwEFzwx4jw3pGuSRfG9siMkhPbWTscxHDkF56cITLzAEwiZWI7YvLGRtfeTn7GOdT8EDXXqo9FTaTrB/aGNqyy0cOOzMDsaotySi9UU4xxaD1BtiCEHlHlT92k41v+NmV5Gut1ZrcJwqoUZ7v76og0PZk8Yp09xGKgCe0rdrKXftvqtXvNWlbxBw4eaVsYruxLtO2WsPJWwqymj/LL1FwEsvN1CC2duYD1HnYsgUF5Fojof8Gvu8R2a25KuPj7LGCBk2E/7WELbU4hSN7SESm5HOZb5d46NxkUUGzQ6cPp+WLR9Xsn59wvvOWOgfmnZjClkycLKkAdwE7M3gibnsXZ7qsiVBBlSAi1dOILN5J3fxuVwb6uVkXHDHBk+MZ92K1WNPvigwRN0xo0oi0kgOZ4HwJNIzUwNwOpDOt7IWp+jn/Q8ops5RL1Bg7PPd+XYKvbHoTilN2IvXqI998axFidvSpJDJyQVMcD3j9lJs8Vd14JGd7HnYu8Ngp9dZsV7jVq+M8FMjeLG2vtFGVUpYpW0XHue5IDycaEsH7U1zpCnBkm8cWZfXRnP4BjY8f/ZnWiPTJwxff/zxt7ptflVSZSqtSfha7+7P+qWntD3/yGfS1z1xWJOqn43UP/z51eHAF6p5ljN1227xNQd7EZsHsW9+HhOpzRM374Hvrxp95Sk/HxXhzp3IlVdc4YihZVxLER3pnsmKUFDNoey9J5fU7+J1VdRVN8BeI+/6QztU14iJo/bA3yQZ6tFFwrJshmOoyCFEvegZRQIX8WM469wcC7ZP1xTPKKKQe5AITdsdLqB301iRLKzE6haY5M7USvxmeasJZoIWFINGWi+L01vremtw2lVyQJulSi27jqa0sAWpnBVV+m0rcdsVNn8MCjC1iq6jdS0HeMr7EHysTPG211InJLWONFukGs6d9J9PVdTm9QCYoaVsXoqdM05ce/Ja7LupedxuqbY/xYTnUnq5epgNmSP9x+l6QJFkRCFNEEDq3Pw1QHPiUftyR390koYSKQe8+EaX2/YhUohMaSvt0eZNZdjEr7a67AutkuxXGwwC1/Rerfc0o8QQ5TAe02nuXss1IRdDJ/Fts4lzkt5plpcAUT7fatzYNAvtujDE6akfSkvlaJhari0oj97piBYj/qDOMcdno9rXdQIdnCcgYSZWmZPPN6+uoS2+tYeTXUq8tmXLsPCQ4oQWm6sYeeX9O/8MQc0fnt4/Kuvcl62jKxt4uCV0lBcThj3WPvaO31TbAI1v49BjY9d4IVG2ZrLS+zZ8ZbXynw/bsyBGHVBHbEyeZsNVHZb3/NhEtcE19i7/pD0T0WuwYYYs3ImavbkG1Zah07cd4ZvVT9JvILW5zkUgbyaPtz4mbHCDMUsdLGGgmttJHMPgtomRKeBF5lG+QQCVMULVsY6GlfCPVukV8K4gRPM8ZkSzpfY6FBGwxk2SP9SMLhXRUl0Oj0NaoGI8O/xBgQzLvvEIF5Njv4AA7L3KdmfSrRTtDAUFcfg54v1vCZk+DqphajHsWqnzzZLAoXKtifuqF0vteaO4cqyy9dkc1mOli9hGIFKYS7sixQ4TzHOidt2Pex4Uq4Zzb3TJGecjNf9rrWAXD3s7TTHqbtuNTy+uy3PKHebg76U+8aNNLZD38fB+92GSkv35e42t69lO9INtddzDCnZDu4dBf0fkqkT97XAzLO9lO5JwSd+WLhoZaPVdvwzUPVfw57sVv7rrP18NazlyXVvXPAgwS4781Fpc7Fzbcy6OPg8lzCW4R8PGgTjzxPXaHhvYsCeJnLVeI2WJa3hr34VyqrWdcvJko9RCGh1x6Fa96izHVvu1fVNIKl5JJ+ry3rurT48c1mXg2/Q1nIL2U3ASOkKoDt9lmV1mn9NtY3JkIe2/B59P/iEgybUfzQ+6wCbZxf1mXLBsdE043ZjWrEGDCWdM8G1SMq4xyY5QQM5Yd30Obd3e9aq4k54N9O/bKJiQqV1sgwq1X35GPuUxevMw5k4JuetIfX82S5fuzB9kewl+JVAXjWpXhajI+3yjlcKe+hl+zPbMpF+Dnxoo7Ayxceczsy5dPJuYW1nxtCYbdyl50cvL5FQ/DsCtD7U4m3Zj5VRWxwx/UKVmj0t1TYs/tInLqinxamwZjs8WGA+hC1zytolHm1O0Cn92WfwOAjsGestVePeV2ZucfX6zZbcznW46i83CNkQUBwhP+SwhhbHNRWin6VP00g2yc4OvPn7ZMje63uzT3/mZvZ+bxr5s6z5afinn723JtsE2T2ptSbf5149++QfGyL544RIKNNeYQj3zMGrvnfrzupp7ldRS3vdTfLr0MDRBPSrzsa5r9JJfy70sOi3FvngDqK10o4XcJ4hs2EG3twp2m/B4OwA6HT7s+xSvNNKV0ESD2MqMW0S7j22dLVT/CmoISYFvJPxNjGycpxJ6yTMaKzsGXfMxdA3tPThzf2umV2owe19HrgXed3rESRgpRKjrHzY6OXnLLLsmOs9xZUtNbUa7ttb6dF2bt+b8GyAmA471XPYyZTn2OHC6Z2DM7cfmD+E5lxJbMez31izhAVrAnfrMW1nlrWfDLtzZKHMfUn37jpc9HZtl46neuLfHFGCiiqi3NrDlto69JC3hZ3xnZir3m+DDrUH5zdwvo3FXttU22r1F5MzUL0u5+7QH0EoUsxNqKTmlDCjn0Tk3v20OTV8IEdie89CPY+22SLV7l4xirnkRHhxdtxEs4f2xZXftNPgwj1z415HpuGff1rWGvDfOkL1Olj9cuf52waGa0zRFbk8HRad0sfFIsbtaeM23jlz0rdYyiis1f9onqaVd31ZXXROtrHWruHt30rl4Gtyn1Kjm0pDctDmUnsVQNrSht/PCeYL1B64iZI9ppyiLMAn3tKMAxuwFmbwSx4QJKESN/opnxVdrQ3hgnncu8387q3bzS2aCB5FNzoyiE2tALKXH3pV/ESFXJZbenquyjtbI2KvhYZkKb/ZQvL/bzrNjh+vOf0E7+4W4NQ2j+0SMyTAn9eqQNJnPtS1aOQ3deLg8y9kBMR/v1LRvAt59WpKxFPYANaP6uQcGysllRVzQiKFknEDfhtaPWrtLCqJtjRvhupFC/OtwCJI4Dcyjj4ULbD7nAiiI407avwMnqgGShAuakWFfB373uomPAdlqjEpugJuq7zakBEtqLQ/vOCYqZavE6DEG18rz98defv++psu6flTIveeoU+x6+uwcaoptz29QdOSmfBaC/PHOz9o2P9Na1JOltTsQAenPeUR+YSwuVyZn3Xzy7vjTda1cDxic5W0Ds8eqXpSMbtmqdC6X7N7PO+nytvFEwl0GHCTPWuN8XCJf5G3dN5Nfa1n7u70g56+6PwyyKVCgF+ZlJDZ/OF32Vx1rcAKnhhHUSuCb0ibag7j5nMa89gDwNIg+VgbbGUJ3YtuFx1AFjhIlOrVzzFBbmAKbqxkR2eJ27Iz2Ji8J74NN4NhpixqXKNptNGwHrMV/Yi6SXVCRXt0mVhkbUm1NQ0MoQTP4TQWmlDmY0UOa9SIHqyiMtnaUk2+HOcDUrDh7Ra5kLQ3Xs5toKT2/UhUt+4af3ZgN9vc2gOSykXISdSDRC1tJynxzR3EYYWRDdu5lsCfvYkm3fa58cFPi1g08lofQbrtcsxrc+NVcpUO9J3RhJXpdTuMrrhNcqJdcn5y0blbvEpKSzWvn1yYx+esrntmJgmeskd088hNmfHdkyJw09tfaLbS+DaHPaplDt7NuCr49+YEEgLnsEezbQVpqtpOcC9/JN/nc0qUgU90TZZ2BUFp1SK/H6Nk41Vw5yfz45e/TyM/NIG+I3vEs7vilrJ8fpeKXK/jJlbtyerT85r2fleG3z6085tMjaGLb1z8vTT4bCbne+7XPV5Bj1fKTq/N8QTQpudm5N8bl2jbrOiKlvOPKK+za00ktbsfhWZ+7uyeLWcIkhnnvoL7a9DndHS+h5u07q2b2/29739Yju85jR9XXQJLJJAECDIIEGASDmbf8/5/XZh4siWvxIstV1b17n7P10F22JYq68SaKwlM5DiEZmkrrGc8lm+05nTsCg7NVU9WWTxbQhYVMnaN2ovpp4l13x8HKwA3VC3jqONvpmNItBpndqYFvlE0lVUH4Mz/thBBzON0oH3NobIjhBM8s6bm5TBubmBXRpj5aO85n/q62w2cWQWnd09zZxsLoz4nHFwuM/pnt5wXTeqsb7fYKcxblmKyjjKdZxOoPbhv2t4sJ9EBDhO8TB4sunVEZAqzxUTY2YMKLo6qdmDbz0iWWPFdCqTzxe8Nxxp8Rc4kdC2xFhssTmFvcCWnumJkomN6DpWWpWJ7dZ7J86ieyygIeQ6l7zLaKw4XRVNNeiyHN8EoneuPYfwgIk6ehjTahezooR+Rq/FxyxHmM3WskVloJDhO3BHvHkYTg5luKntcoHItz+NMuPQaZz4XFkw9SUMhOnICkzOMXA1AmIM7fTTpfMUMwc4SpkMz9LvysFJ0afdxNR2IOAWqTq2FO19EKyHDuKvWzmqSPoN42ztee5hHeeMBJAG6nIkKbA57bdexJtO+l8Yj81NbixTfFCh0qYtOjNZm3BDfqfuJp1k/izPFj3MY4ko4CEx44LzLjXFiUoQYZ7z5nGu8vsQdj/D16Mi4k8I9OI6hWE7nHeRMniqNJALymgdpMlG2iNXNxPdNRLlVYCTKuZ8GVfAovLRXW4Mj2mdmJcHBr69Dx2hn/wgQh7HSaIF065qHwTpzJcMGZzDHFjz7hR4XO71yEfs3fQ9w7YVg7SCBK2UK6ODC4MC64CXgKY010XrrTLy8I+o1a1Y7um0APhgiHxOBofejaoVFT85DJrwIP75+16uzr2PrcB496dLGPlNv8NPluy66uj8u6FoU870w+TuedkvHN9Z7Y+/BmsqGLnBJytrRcgNGSl4+iqixv+lYlCTXDnu3LTjwXfl5dgVeVs12URM6cf2M4eWAV6aIdWq0wAngVSwcXjhN14DtC0GmGQEPEqbfNAMBBIELczDh9hJv+Qs0k9YvoiGAGOYZZoPWb+M5fIv4GC2ubTc/PtC4R8vNwwoqzxmujcn6PyIyuIfhJL2euSjhd5h2uHKnA8CwmFuyZPawItL/fgql2HyaITBb2+FNlXM+oYkvShJa8+slh7DZzbYruiic0w8dMFtrDq9n0zc5z9nBb3S7Wf6Hg9xBz0u0JTRQmVrn2TxehMAnLZ/8t6mRYrm3AweXL731vDBi5A+z51Oj/Xk0MRwvYsQQaW2SODroJnQQpsdr+5LRA1e6KwtWANyLWRp6kFiBsYZzzQFwVRzQsolin6XMm/qm0o10Me2ooH8/hqHkuUDBWWR7zU/OiBE5fP/mn/C8i6H+mAmQMIjNY+aOL2YnR+bRQgtYlXZ7WHuwYm2TBsuxqhaH2O2dJnWqv6NBgJt9TOQ+fDX3gMeNqg78Eq1zItRx/db5veMTKaxtGWbnvQZE3LxIRMkWcreS+hdtrjBH3iA9tCrfDMA5aV+Ir7rBV3xPTDHLuuR2uRDPOYbrY/NVrbwe5SguYpHFqw8E+4ymQlw7j+16UmRfmE7RpLCSe5mnQX7IQFWGBSTYDtJzpAjbelSmSXY4MQhaKh2QQsMHHm0sbHjD3E0vnRJ8L4LzkV2bk7MeIRcKylnhxDw0H3TTS5vJXDL1lV7MBZ20iD/CLh/mMa4owFR3TqIEFiscIRA6ZgiCNEdXC5aCXz18nlsMPIJg4RHD4eBgb1Me2utmCTxna0FnIpIYgXEwjxKONBcjCMknGaACRkTvRgcZ/oySOSKWisHEbIhofYcLhV+KqHpmsTC48+XIasDlKqFJAaxffryEYxiuuuZd0UfaEjcG0zigE2W7YhSkDpoiz5PqZyviQCoq9jkaYKaY272OtrhbEKGq3VJQtkl3rKC7RaeEli2M6TRA27c9Hk6BbxDL1As/NBtx9biP3yMC0oQeSsYFBajo9eOKhE6uVcBdcWl+jZwE5m45LLh8cuXQQHXSVTThLf29S0vzSkBai8IiRujs0dhHijp3CI5rWQRycOPvpMyZAG7QXJQJvso6Os+PX4A3n988motjDNtjY87QL1c8otXEe6TTaHCNYZBs+IDohnmFJWPNRR4eRufG1Nii8YcecO0qfwehtvRrOBQ+zihf6mI0608zsERSeWfCMvJTTeYGaiX4Idyyxue0JHAnNHtY/mXDOXzgsI/O3VASkZ+4LvHCjps3A01GvcCOTwWgOu7yOg0qUqRNH7L0cR5mkaYitnn9gWfMAOLAw3pEkIue5HQvE9ZjlRqAQCyk9Q5UEg4Caoj6FEJKdUxak/oNX5LU3IAzzPK6Yn5EJHIhrRiIUylHpo+OgmamCRY/zPG86tvCkIuQNzmKkgrEBdRg6Gzp7ORPlsJRpIbF04t5KucV9DQtvUCV138vYncVBbzdUCu8mNyV/vIcbWHcPNcQiz1ABiT/iMWol8ecArgn8UwA/sbfguT5hDN+MSUuncmuwD1c/YJlTsd7qFqi4M01kCYNxY89FSuLsYmzaf8zjFkEZn0sTYk3I4Kkkm8S2Neg7R4Fn/S0LecnY5gvJDXvgItCYwdAzrSMpTTekIESON9e/wi1JyE1IlCLb2SAaPT53EuyDCCldJkMixexz8LybNP0xld+zyj6PTNgwISPUSPg0Ebq8h6YTCDXg4M+bmoR9IgLFErEmdwgBGWaTQAAdjrAwTsH05IuPEY/CDh1QJWZy8HOk9RMMeHftuIKF51CoPwpvJn5CQb5LXiQQDXsP5g53WATJRxNJnFYVc1EZTWpVVypPGA9P0vIteVpBNLyyPIfD+TVDApOHoeucT+du0biPtj0F/celrThkPdRzi6LRaUihGVHtBSUClBAh0WlVVZ975H8EiFWbMjk/Lzfyko9HKlDOl+Rrx3RfOqXLezXTk0TsGAW6VA7PNE9TmWqjDwPHhUl41bQXKcMBGqvymcdoYOHAHYS2PE1AAR8aTjjgfcjp6WCnf8mE63stdmazFnC0bYviYxBJ4VURv9elySTFCGajp5ALcgxe6JMW3ppPwSApziEVLs4U5Klh0iJH9DWIHfXuO4qp4CVsMgAYDzQxWF4T7rw4Sz2afXGc1V2vBqJdEN7ETNSRm9QaE9d/4MRKamExGfUG28j8nHNB55zKxEbCvQm5uLoJIn1Gzf2fKP7A2d5k8Q09qXWtY2gvY7N33qaK2gFgoda9KXazV6g7lVswCjUC48SbdPwrqq3iemJoX93KB3KsyDBcqNLO3OzDMPnjWGCr23A0OryPUhfEaOBRg2miEILGzCnRKji4kpo/Rm9CPgfqvoK2tXYC/KidRo1L1N8rUc1rW57ujG7npdUkXyQ4HiZ6Xgt+FV5Vrq1vrc4xV4efWPa9VT1R43xHIM1iMmj6W8s8rpVNRPVoD1OgKM9iuvF7rys4QmIRvpUPhzQ5Q7bntBq1rMhZSzxyz9BaNn808OKIN0u05DwSX7CClfFxEOJkNCFIcVR//RdS1jPPCH7iideR0nOOUsfuL+RoanpSE5nB/juvOkC0nmITCvWTQrnbbWEqKHXSWdp2/w/B+gYqRzsj5vTr1cb5ojOvwhkPxge6BtwGwpQYtfQpT+xIEef+/rypdeLoDnmAkCXavQM+I1cIdjzpginAKSboGLrOT+b1Ycq+Ex0WEglqNPTO8RBvyEWzyJkeDzkO37kkAlfo4gJCSv6gkMWuJ9JmG7/0u0errsp4V41nXqPH6+5xBlig7l00q9T1P1Of1Yk4DMEZLYOx3G4teGhyfmkmrLULGNgTfFI3TF2229SiG6Ygxq7mm3KJ2mYUhWPGURd52hacGnZIIfb3Cd+EJy/qnb+c+SDJ0+FMCrkKJEmDxdIq8jwx6g6HD6kbBo/jPJzvpOnH5B9w55TThIzb2aELJ+6ScSPWNZ6GKQRE1F437sOdjq6tPRwP9PrG6KcRceH0eJheDG3A7N8gUNg4bWz44xLnEGPZ8W5vsG7CIkr0LKB29E48xaRHSsP6kZG2mtswGP7LxMJgxVQ4qA523izPNL8bNWpz2Ki3yNdujBSJbQ4FmXnORRM3a9u8+BjdVL32KNMg4IMWeqshlAGSdDTvhNRooA0T6LFwBtZrtcNiyMJrm5q/mktrH89GxafnuJ88WGb+mmgLugz1mKgwSVWZQo+Zfl5c0/E+RZtJuFTw4q/DhZFGxJXhQoeYfS9R+IKSCuODNsG+5B/UAtEZt9sXhn01Hna1nGfZYdLhKHZWjoTONsfiGNw62A9dUrvnafREIVI22pBdCXQZl+SFljFrTaFWCm/M00LOcQHKIbUZREt4+MwtaRO2tTcvvZABCvtHZ49J6XUL3P19Rb9NztACRKKi6XjkEylOqnwC+DwiZkmbFORc0POUcvO1AG846cqeLE1HJSatjSwmWVzpcX+BL4nWafjNCnGZtsSzIYqXOLzZhIzTPR7xGqID63OA1aSXIk3IFXZ+aRPyeUJ1hPZCgcu43TmLgkOJPbdeZop73Rg+gsrjJSTW9+46L+Mkrd8/odiFUG/05SDM0IuacITSziCC05UwG/Xb4PP0QTFKpEdmc6X7cI32W49x/a5rabEfMk8BqYjK57w8neaA17WMxYP3h1WAwWjGTACh6wDMCJot2H/owePgJ3WjL9PQQWgGojLN35GePxtNIedRNY95Bqpe5Dp/XwUT8+VyMTaSrytO+oZ0TwF+Qy2t9FqUSNldU9djIpIOQwZ7F2PkpFtYT2LDJ3lz7nMfzwbm78i7/a+1yBSFFk1KW66hKEP0OAjR7kwFYCw/fyWL1E62pjpkhtnJs9Rgi6DhALdvgfIPetZ0GpklUinT/FBYoVjVoUa6LVxOTmjqe22AWJgmfC80Jv4KeE20rNUDWhDIuJ5zy3ZuQ4up84ejxaSdYB/4eVW3gd6H2Z1iahwIKQf2SZoy0358058+8okLjjtOBOH9fTqwSmeGvHB2woNQXDLCXbnA94jenHMg/jmBBn8cMEmsRWdZc1txJ12z9k8TwyikQIetlSqiD5q+3UgwpJ44zY1euaVh0fyITUArOfb5nIAD1dmtPka6sPu/k3QxjoebvmA3D7dYjLNOs1fOJXPY6CCd82PGnd9EPHgrhz6MLvI2kamgN3bIB3SZTKcv6ABs0nzjnW1nBW4hmV3ww+dtoSz2xvgVV3i+rDO9bk7uhXEjh9USOKeJdxggrjTVmm9fpxzbQ7LL0T6LAGBfL60tU9lMjbkSIp5AI+b+RBsfRYHBL2DlFCdd1+3VZIlt9JL3iD+V5hUAMjb4v+MXu/oofcHcXkOJDUAel51RcryCxKODON4gO+NOuFPtNB6HfEgFvalMjDsHat4vYUN40ljrx+xe19miofDaXSSHKEUhN6Lo9mbYBD05U1KXM5JAvkDtvVgUTAVJrb1jTmo8pIREURcXMfUT3VvX1IiEykl9yYDhznrJ0YUE8xchDc23EPCa/eKl/Ea9mlPtJsPvm2vzWDScGR8GcyUsZvdO5Dkr1bzmNBcwpgVOsp6BUhXp1KTuhRqROyYlECLhPhPahPiMq1HWVrRDoa6je521pNYM8eRX2iFwNFDGLRnnuzO6qQ68Z2QfDbrPbFKOTVS4oZOa8tK0lnOIAmdb4yGpBntppPGn2hMTChDuwvhS8GEIx1WxQNygzfiVwFeowelWDq9lWHZ1T31mWLDkczyMtJkhmvpHwTQA1FfzFpC0HQwUYfCdXUOnHlWcdhUMaqmwnTygnh5658rpPLXHJcI78PiIQqqUd74yfzpNjSUA5IB8eO3Ec5w5nW2rDABysbCsVwmCGfa5fw/h/pULb4cUheaPPziYhXwA17eEPGGlDh0pCmoeodXt3LQz1ElN3dgcDof6CmdlVbtW1kRgb4HU9bP2OcUw1GgUOzF4l6AqbuvR+gysaMqN6/v+8WRvZmLQad0adR2exprT0FTdhxQ0nFlx4Eg15vFuB8AcOLt4YDa20PUstrhFFReAY9EQzWFOQucGm4tk1BN4X27cPSFFLLP3LQUfp/9H7w7o0T1tDIwNK5EoaQl8wb97apyH2NxbvCTG6hyQ15e5SFnOko8B7nt9O1ZoqCuDWIuD+HWv3/iAZxe8dPzmHlz1Q1pbLSZp+L636+MhVmKeiuhjnIENmGd1xcD7C/hH1EjQfFAdNuQrwZuYcTO2YGIRjA32O+dVbBDA0rE1pG8kRmfmEjInBtBxvOZFxjYIcg1nZofOBb83GYrsQZgxVxQ4O5qp+SpkdoixXHsmhSsTvC6gLud4qr0vrCeUoTiRlc6mJlzLl4OfxDURjUyEGb9Zwh3fYQ60Sa9NoHM7M9pVQKWFozZ9Dc+G9YLvoTvfjGmKdT50ZIv5Ee/Dj2kqiuI4Spv7SBmfqBV73KkjScvxrauDEbnvRB71m+87z4wHrYAqOEjc1SLyDwdnbVJwMAPd5XO56NBbqRIRsidtrcgZzqVWMPGcbJyAIXfWWJaGO7HwE3nBq3w4Swy2qHayy4ax5jRVOl1zHdIVlEAisC07tYYp9oFTFf86BVsxD+Ugio0zadBbViGQf3gDBBiruYUJhYezffEYQ2iwUg0Db3EoKB3ic8aMUX9zdXgrjv1saFNhOOLXh6cdpCMtFfpMYU6oNCmhK3zqXiSeMk/7tpA/6C7zNqlT/3AcF7h2G/hlWqfLizxv1OJM8E1YRwuNyySFrC8iFM818IQsi3LqSIxfDfEY+RQx3WEFGkLl0zxEwD1EJ35xPFNegiNrX8xhuiGz5q/+HC6Lm49UyDvzOjEGnpmEeGEx9VDATrF20mLPQ3Kxg78Jp9SRTugVQYdUiJBmRhxhCmHIn1/mHeyJ85JMc0nfLLfDGzRmcWQYY4nLoFoWPg6q4ZHb3mhuV8JaXiePuqXkDtkV1rVpwnU4vEnJtSuxJgGf5517i/y7STfeYbCtw5H4FZy79f6wlKv21hW+IcWE5m9PeCNU2Emg7YR181EQcgiGnabwh9TKegtSFr/YuiFiw9hwPmv6JZuEj9V0jeZi5DssUE2Y5oiDZ3SCyDi7avoqOMptvKI5M8QwIYHEPtraRJqe4kjroSFJlGV+lgp6KjPEY/JtDEpgv9GvDj/20tZomdyoOS4x0Z2mbh9hG8eDd6pE2Qwxlf0+zYKBG5A6XBQEDa33dbvcrfrqIc04qJucTCWFPWF94jtU9t0dtrb7A+bvTJCz/8QJnICk4szWMxIMm3JY/+K6poEXYON5z0HrbPT85GOtt0lmY+OJjIuWBTP20u6Sd1NwkKF7lubFMGfrWVojSck0jLCQhfY1on5ItJAh0uDQFeDUap3lgt0Vl6otbJ5mfXGI6DyZmuhasWbsDlbsGxTNLFMkLI7yB00+TzQmbMSciEamN/VLCk5xVA/Q2KCk51L09cO3f538YjOIthPwCX3AC1IDDIbmF1ipo9XCcih31Y4VTndgZ0RwxbuvaiQdCT+0e2WxXPpcC3S2QJ0f/ritfE5/Jqy13N2W3/I30TZKHDLOG8El5WHbgsjbLsENSh3exqeo/z6yk0iha5xo59TqnrtRXi1zez+m81hDPGkLtNKp+NiFUZHW0kBgnMbRxwHNq88RAkypk1+OEcHbAFVEPlsbV6Z0OqqOa3O7RMLp2y5GTQ6JOEccHd3tUFUMSTQkZKGnwPzrzQcoD0jHSsul6hi9JPlQWOJh90KnWzhi3OKsJqGpIIdqscwoluyZYxwE0QxUIWQWxyhGaxY3Lbqc1iKkvawVejHx9aRxKS9xrJ89TO6FncTuOQeU18QXo4K7G1yMCUlz7/ILbTJBOmuFiehwnRf69jHhyZcRk4KVbWrBE2YODb+wLD9r8u4qj6R5op670YJg/i6EsNbkINKhISJPJogZbTCeE6hvzxj2eKAx3gAw/JLHKaRHsWQcNbcphmduB1RHQ7H1cf8JgTkvv4mpollgKt9tNshK9ztUu4zONHGaZxq39WgN2i96tP5VwYvaQl/NJwujNnAYe/k6NRBtrm3WjjHZmrVLZo/aOIKWCWYQ17eJSBhN1mevUWAsN7kSYdRjG/WjgleGNUMlCLuGKzw1NuShhmvd5gScuZ1zaZ4gnuti3k4Ri+/nlLVTSOcNcM0NyRCLZm0yApTMPDSfsL5+itZOkjc/vwnfhhnG8nH2yTlIqrwcR/yfs0WHX6piuVVEdeZoMpbA2f4TrjvkPZegPR2eFOApFdbNAgMN3ubJdEziAKVGgy70akq6zjbIzNUvdvH6Hzgh5Wm9cE6yEbHzGqRn+QjeRLtUXUsxQo1nTxTxXRQ41SKv74k8bzBaVW3equ1rUi3Qxa95+GZ80sQOmtsOqt8X7Y76wFd20nKYiPtMffNC3IpC3gL/8hNP9GjycEUrY0P5bMO5zu8OR3hD7MxDXMD7LVj3Ue6O8akcTqLAF8mIjDuwc06b4cRmEE9ZcyHQ7boIvsMcJyFK+rlxC41rojw0YXg3R7TszaFPxCXBvLOLZ/SZDtGqY9rUSghlVFOAqIADL4MThxke63QjOgXT6KvgFpHbwSKN6sxjnDYzGdQ6Gg5SI0rdwmKyg32ySLuc5w7Byh1ZfStfSXaw4HATty1L7RoG9voqe/5Lp3thtS7S1oGWKxNDFVpk/jquMI7cD+07SM4yX7uRPP1Oo+/gr9AwDVZWXdfS2kITOSEyTwuYOMOCTs0kXDdG3RX4jHsWEcergtcB8j7ipEj71OpLNLqeAwz6g890XjVyIZ1VEgbZtLxoA3AyyhGeiO8soNY0pyW6FtYz5w0egucSGRcPOJm25OuzHo9Y5Hi3xRO8aVN/LVyE7Bl73i2DpQLen5vIQ7mOrFOg9Q6qX77eWjQdfLw4k6CjIj3+Jy2LpK3VhLe5LbCAmkjqmqqARnA5zQQhRtUp4Tb5Qn8Qmrm17XzHHhtTPg7UyV9dPMV/jH3ua8ltcJR/eoAkl2ckdkAeR8wdhTV3K6wmiwn/H6G8xgVTCbSJFe9jpZTHtvKXLKxIhGBCk1eNY+mVoeFKeMp6nHMerr+pSwscqlbdK/FjUmWb2S6v68bWmkdPcxPkQTq0D3X1uIITUl6C9R0S6hJKmllsjMfn+pTpSJqUFhHaKZrlyCBwZXCwhTT39AP91IyzuX0jqzUaDiY22ZkpOM5np2AUXRJR7mgAgO1idNI3djRTTUUIbAhHwYtqac4IDdejDHY2Pk2hBtBj3gXvmC/7+/bOQxcZzQ/8bLJe400uRzLPNFWIj0nPQUepDdoq0h7r5Rt8tTkFU8kBXodiRgN/ktZj0laK4NLYwJ00OFBuHNBlaaT6tSGY5yiPgve2iNfJSAl3Vdc9Y0rFSfGt3oJ9I3m1N0PrCoKWXzK662uMVivfQTOZDbVLgxxzOyvi4zEkeCcRymtTOGJzsrzEkizoGMIQkVPpsqa21JHw7fib2TkwRxoPzBkAmm8O1Y596eR+x7Wachkw3lbtaPz95FRhZziR9d37TAtzx0FEkEsG+d8r+0EjEqSXfmM3wy6DpCnkWu03nLMy3hTAXBuS8wrv7+BNN0/7JePhmg7ntiJaKBP72OUZsUBwZaQmBdsESOJBBD1qcq2LheT1IhJyRESCo9AajglizS8L8bG3azeiSZ5EYjCsaemizqUpj3Vp4kmAtIvv9UEMDxF5tHEbt/iFTNRu0BF2H6UpO0+oYpzxZCDtOTE7FGJa1R/TZQnGFuuKbDWb+uMQgoy/IG7PTHZ/U0tgOaNFvFfVFkmlAO+lwv52YZrI81AK4bhQ3DThKS7SPHk41df4di0o7hgapCizr7Fm2F+Lpb7nxlgf0m7W/+0pE+VOle6yKASgBM133hEIE2kpV+Q4xedrga64oiXsSOUBva76p7n/DK3iSENY0/JL1R6jbA4/uIW1wzAZmvJgPRyvO8+TnrklTLFWl8d/ovrIW23AccNqd5eLzh351nqsh2PesxtF1QHNK8Ihj73L+Jf47oA8s4cM83hQQ72xQUV1BA82s7UrN7YkjM8cbfoQTliJKKnpW5+8KcAGIuml5Nd8soOYhEKoPZD8SN1bmtVEO1cB5K69vix/g8kHUsukUECaSoka+mepYUF9s+AoF4lov8nWCTXKo+hEpBYHbtQHc5k6xVp1DlxfuoecHImvoBYROVo/Fj09skddU3FIaGUXIxXiY3fcVRSC9YdyXdGnuNrNYIpwwPxjZG+TkDpCNkVCp8wGLdOK+R5N+hCkay8SxWDX3EZeJLbPhflyDBBaZkVC4sIiOVQ4nsMJWU+ks2mfP+3oRjUnvdLQdrCp0145HJ3VHlnK41x7+bzOWICHiT9pXw5+JiEPSgmaIRaNFXNCj9WO5bKgvEy/4+3tBL3GwNNxFFsqPhSj5GFuTcumsDTWL8tyeSh9n8drtKOkKXz/z2SDZGZEGS0yFc1Lbr4bAWsfy3zlEQ2t882b1VNM4jLRCGty1tG3S8xIzs1sIOHoSCKXmbVBXSVOStBQUjNYse3WcV5Wcgt7YwRzZaou6QRV12/PjLJ/N+bSkeZMOFIaPeD+jP6ICy02JDcaVKaElr6reccpBrGJZo0Tws9IBdb8U9IFx+VF6PMFL/bdGry4d0ceuLQsPZOblerM+GCilJal3Vc6pUzEL+AX6/c23qtWZLpOI6fV2v3jUhCa/nBOrIB3XeGNhNrd933mu9jbcVhoka/3jlezDROGmpjbsXNZSU0PFjhlm3K2pBYyCU9GtKij2EHKamwJrPkOgnKvsV20NjMZp6XVRmH80sRrwJ8+Tduf9LnwUckGlrrM/y41SuDzlQuuw6UnMn9rUUozOABuGICwgmJxF+aEQHFd8ZaUBdMA676ZWcHlbHNkfciuIfYVneeMEkrIRj14ZLfj15np4yyVBAuIBho/jPNrkyycSrJUFkMaBKFCR8mXs7h+dINKRhWc4EE4HqXjhmiGtQb309ym53mmF2VmXX2hkwFCvZkhDPnlhmwm6ucmBuMpvDTzhVqJYy39em2KqAwAEf/XhL61iSGry5uBMmqnNeY7Eu6OGu5IEyzNTNy5qqF41zbydeKSUe26HQmnP5OFhVzUXMn/uVmiJeU1LQkLfeG0Wr/FZWEWoWRJTtme+sAJfdk7E/CyBhQ8zS7VEgnOSoMPaZSgyaAu4s+lUlYfvXxijgGzJvno2KjAjkCYFC4qBPKcIKLl5lsHG5gYi6Povqmx3NWZy0mrmscRc2HfgSUjzHVrkReOC3w0W0R7EQVaxxRtgTzt/Vle8yscfumxAQ8UXh5yK2V007zAf4WCj/U/V/7rcq/KvMoZb6S2Ndnykl+FT2VofgXqe8vdhPeBw7knQJFKnRAtj070xpMQIejMy/TW9mKa1lBNtHU1TKSiLwRS0mX7g6yvprok8nprx0mvlXiBct39/2AFQbwY/E3c8TWvBJvexTytZUbP5hXtDe3Jc2ak59YhkQ9JyK3U/mgAydOFAcTdD4u5c1MJC3qZuMdmkIvFzthfLiSv4iNHdBu3FPsOMBgDnC7KVV0zZ7LshnO+QWoVBJ6GQYHVq5xpLyiuAJ4oIYgK6H5BIRcfKxaXFmEBZ5bU5ROGCgFJsGNQEPMimg1nJrZVNrxda1/ANJysnVX63IeK29yeyPm6Sj1KKoLR0txZ27I89PYj+jzsc7Vr4SRbpl4Bv65tTwjSLVh1DW37y8I08KtTYSy9Ufr1xlSq+VNwLzT3rL0tfHmXIBnNMnYZwH+gDOJEK34fLGnKLkrjrzqS3lxuhCCUi5X0tOM0vNcZg3O+a3xBWKiRIeQ1cm63+PUaMnDsaPJY1ZfIyHs+J2luNok7C7vHrqN2DddbAK/6Y8ok23jP9LnR19QfNPGULV2JPQy/1E7vmsDg3IXTaoImLZdVfm948EKguC+yhLNDQg7If/46LspeSQCea9YwIpw6dyuhtM3cRUey1M/vq9z+VzWcFY9bT4IqZaZ25dHCSFDbrUfrWxDeS0iJAJ8uu+t6x0JSkXKqoyiT322U5czhRFS80SBnkHNiRfP3CNLLGkw3CmRmCgOpoUbXFzQUXpdy7KXFjOpyh/rORzIXZH1LJob07UZu/hJDPgYsAslMlmX2pdCLWvVluM/qfitrAuG0nsZwE5zwV6trSGC4tfbvFyx69f5aJOIOeB5OIloFKrE6jWYL6gCL/77L5UaJhHJ7MYaYxqbIAu83BKr8SyZQBgNIJvQV3Kh21spbVmF6aJa9cl3NGdXyDOLV+G726E5PfzyroHszQm0ykSLn6/VWOWrI4xjDw0G8h8tOiW8wPrxmWLiG2tK3exBE1LRWFNowqLSuYeQLuRIpvbr+ff14crN/U0fp07RW/3PjQsxtZ1lTW9gWf9CihmtIE48E4mObNwE/aQjQ48Qa5RLXe3Q/oacpYU9r2Oq90L7Q8i1Mj2hYQIa8huMW0n1eccmNEqx2D09k2C6OUVybFXLqv25b3E1q7vtO0qR0liMzA1RGAoi+GVSkRrluuoOUbct0xmUH3q4hwNfw66rWdoZ3Mcido7fpLtp3cB6UAwDWOpv/vpzmN9J1meTKoLadOzNj0AnZtSEhT1rkzgJz8THqYICoLyoMSrz2GgqC0UKRUX/RwgO2YoGATLXbOBaFlYp9tDZmyKwFvoARJWk5lxA33oWJIRv25spkxgD7DCaIQ1SUQnyet8wfbqlYmBHHWXCh1lQsvsM+yQwd69mfl2iLrxtbs3VpPI8Uo4gmyySpvnyvRd7ymuXa8Omg2RCWYk207wlO6rScs69ZOmhSw5QxGw4VOeQxJ5e/JNWGoV8+k2CRbsXN+j1ejwk+n3bpsYcW4fUbAwduKMs1jsajcqgm075D3LTvLbDjL/dV2Gzy51xlPuQTr3+p7YQ9gfnb47JrNIjfal+J530PXk3PmzcYBv7P06lG4/Ywf3simWfedpF1ELHDfTMDjCMSW2StwDknVKt7ZZftT3d9diB5MXZHgKx2lOpK/m+qhO4aA3I1m80XrGvRtHrGXLBs1D0D8lZdzmLdrkst6EzlOyIi0i7aDHGARv+JSuaItu7bDPvUCPG0ub38mm0R7BsF3Jdw8nkHi1uGnTtfPjhffnusf85IgSZfWuIVgpOH9SiE4O9whcnC2ok6b4t22gZd5kSQAWXNfYt1xUP45rSaOh2RJE67N+FOYuiZ0hZhOB4Y3nB2TVRFXXeOD4HmqpjbPEFpHUx9+0QqOi++lH2yIYjm8bnPHzx6qdXMDTpthodyZhFrtWgZv4DV7tRqdqxLplf5Ba7Lclfv67Q2d9zX4FZ2vzV2upHnuVYsJJ+l3Uth7EOZlSizo/C/+mUXk/VbpG01tJa8z0WhCNeTnsSTIS09y7V/RXo5/1QJBT8W2bYY6+1v0neequVtLC1oZtSupOwbhcdcwGWML6AuezDfxStFMW/arYWnUv7XS0rxnKB3t51c8Jkal2MdgvRin1z5TPDnD/gS8L6vnHuvgXW6a+J4vm6/W/WOFJbKdjt/m/Q1vhOv1HqerT1ulLiuTW9/MW40MZk6EhOoa6Es5GtjmaZlW0XJUcrNSw6hOrcQssmc8YEeCTppcht3kHtrDWDkR6gKUNmfYXwhfZdkOVNWMh0h57apQdlvINTm5mRHBcAWot+GqXpdarekN/wytn47oKS+mnXfApfx9mpVJjoSL6Ryh8eq0EoQXZQaZoc1u3QbsqYxiIzz0/YH9VAL/8TwcS1lzjucSalekTbvp/UiSXa7zmrRZQt5GAlaqD/p0nQk6mr94kp2pXSXXASsaBkqHtkuVPPgBFUKB3BFQYadM3A2WS/fbLp3+C0hGojTdYTSMP0/+Gs0NtTGB6cjLctcqdn1+2uOjcFhNm2hItWoyzC6rMtW/fwWOehaukXKrbfL75gG7n9t26UcHQ5H5ttF+XutjcaOZ1pYSS0mgfwfbzu9mAs7auh6Oe8qsjmUegdkPL3aguoU7Q6EXJlOCIuuc2ybJm7ujG3X4IUxNl/kJlsqnd7dGBqxjR3VtTmCtZ1QX+0h4nUqEjjSnfSaaeCnpKVs8LumHeX71xgSvqe9+2270wtLjab9b2/+FrkEveIY9v0aQvn1il4Jb7s+Vwvu/l9yv9s74k/l2a7F8WFfeqoPpSLlVL+wb+5qa3JJ5zcm5JqTt4s8CxiIU6bE1xC2fS0wb9YTH1mpXf2izHnF1q9ND8vv6vNQkxLPBIIECgZ9LxV6qLXlgfZDHZt5nNzeTRjRNODb7yXIxNpFGmbBbDNLJhmbhi3Ru5fkSnNVywbTdwu1SmORpCBqa6Sh2eBfhdVyFbaq3I0Tsu8Q5b5DHNwnA3+btCvAvFPcew1WXfo+XG8R2zHG3Ma8/a9E7UUwbJsL4kSZcrU7zfeSiJYYQnegtQvWvxYONtsmW1otu2HejyOxm+Ma597wS1DXIu/t8Xi5be/IA7tO90wh4owNBtCWTs1vd7iLtxZel1loXg6Tq5yrry2F+LukS4vYmed6bl25e9geEefBqba7z5GLg/hlVXa51/WCVwPjUetfl4vrI//KezipTtQ2mIm7M6nIX/kmZF2W5mQJ/gJW2FfQ/LskN/cUOHGt9LZxxkpVvpQ2Lld7kqOOeIoYxedCg9AKDtRT5gk9uMgZ++qi9bqTJ6O7WRnvO9HKnFzsX15izO/K59bbVc61jQu23Xfk3X0hZG25CpanLVm7Dm1V+CLtC1NtM19R916/7Iu57xX33g2tzJURgCTnQ2TclF3xJrLjbOTZT994tcmPqvvbcPiZUuv+NTP3L6RpCy7zPKateA/pIz/KVxu43fMUf66EvEVoK2rwFji8JitJzuhbepVZvu19DPT3MqOFFxODoTjnKadB3eGUC6aJuBWMIsUUuiEicd1tL+8q5zoMyyL3MqeuTc1eEdhYRpf5LlXzj7zctbr+3DJfw83zcisyD8Mq9wou69E7WNyA/ZyJ9qrEVZ7aJYbfr9X+colfEbdbufdbzbD3enW3J853r4kFHSZFEap6YsmVduyl1hmB4SwMApVZAX8nXbxAxu3np7Dn1qgxk2g0AWiJaeLKYIKY6Drfma2W3l2JjZplkbvF7+UcXkCFwSu3T1Ool2IZQd1pF/dRK3Pf5wqu99v/XO+nbKfbuW9Q7S/GJHsrq769oebOP+/C3PHgL+rHe324U8L36NcYKTrQKv8dh6CbuDyev4F1p5w3VeztGurW1+8zF/x6s8RvlcYdsXdMBa/cc9tuf9njQO1O7o+apF3ub/NTKmtq9dTi10W9zlxQi6Nn7m3TgYiP6wO8ciF+bu0h3cpt234ZjrmRxGCvxcGl316B0+XUWZTI/dF07lHpRZm8BavUyvy1V92dpYTzryhXBIis3i3zFNpStpia2L+Kyaf9CIuk4uGtfLihy7UpNSXoBRHlxsJqGZCkn0aepnK5AAIpjJaUO0t/X0tblLjUnVv+Ri+HdNUTRJDQqhntqNd2L036L7/EWVzs7/tpNcpX367g7ufOyu6Xud9+b/K44/Z7I/s2dvdMDPJ6bl9i1+aIv67LYImdLe7mYCfGmJf7pLm/E5v2PxaNua9yvlIOGcyd6fkCnvPPd7SPqOa+or2Rt+qtZ/DUpynrs72yUTZXGzLhNS/N1uLX25fU98wNJQPwb6WE/17Y/qVSk8dTXOHn+WU04HJK6DSsAAAC6ElEQVSN37T/fkXtavP4ZVufp1G3DZ7RNTTxkdraTv0mnN9V/mU+8PSG5DMc4Rbe6R1GX8j3rkuy2YZmWftvTy+kr0d/F8K7dn2+BsKvrv810Xfbcer5eXRJ454Rid/R/jsQgotQ3Sr8kuW6p9dkZXchXNhyvz290vK3pPsuSRWUX7Fp9pyh44dJ6u2f93bTC/P01xsEfH2vCX3vwybAeGJwXxMlA6yXucZ7euY2hOo4zDvGyP5lHofPeHoU5T52Qa0QZbN92Zw/6e+V3s833gfx7QJE+69biK3j+ewsJDPtv4PSAOR3QvthsGa/4ebhta/G1+qLQu4KV1uuN+rbMj+8yz9v28Sy22Ptn77QkXEJTZ6ZJN+P5+swcwLzFVh+BdQLy962fH9jAf6Qlt+DecPY8HdJYKt6si/+Rn34kN9JcvfHIN+Iefsvb3Ijf0fa3pl4DfZVTnlmIX0Nvy5h31OVF+14Ee/XDN8vpxdgLzG/D/dpY8N3mKCr1ry/Vi2f39vOfYfm+5Cbgc2sVM+mpV/6ZdlnMGAHUWzi16bgi3yr8H/+BZ5VP6mO763p6+rRb9PDtut4s1TxfbPhmbraf/rFu/a/T62/UXvfMoVfbuuTzkdgfvrW3n6tvTedVscRhT8uoH/SRforWVv2TsjeSf6sD1wO+Z0ra8cz6xfU/CW4vHya5undu9eXwv6J3LzU1y9GDCL60sH0mwspquFZZV+9qNpLn9+F51Y1b5kK+2jmMp3eKeCjKO1j+a5Rr4wNb0o71+/c+iYiL7sIne397vQzxMqfgcU2Tu3G269P94KP7MN8Rpt8Sz+02yzphfTrjAR/l9a8vhX8E1v1O7TmhROy2435kbT7T/qT3pnaP758lhe+ZsnbvxY1fF/6O/fLwhX6R/XKN0l2m/4B71HNf1QHvyX9lUzJIvJMKIEn07f13BuMDftJL57/pD/pRvpR5KW1P7P5x6e/II/9y6VvMDb8SX/SXz/9f4tuXfueLBqaAAAAAElFTkSuQmCC]],
+}, {
+    Sprite_Not_For_Roundify = 'rbxassetid://3570695787',
+    Images_Subtraction_1 = 'rbxassetid://4695575676',
+    Saturation_Value = 'rbxassetid://4805274903',
 }
-local OrigAssets = {
-	["Sprite_Not_For_Roundify"] = "rbxassetid://3570695787",
-	["Images_Subtraction_1"] = "rbxassetid://4695575676",
-	["Saturation_Value"] = "rbxassetid://4805274903"
-}
-local getAsset = function(id)
-	if getcustomasset and writefile then
-		local guid = HttpService:GenerateGUID(false)
-		pcall(writefile, "tempAssets/" .. guid .. ".jpeg", b64.decode(CustomAssets[id]))
-		local s,r = pcall(getcustomasset, "tempAssets/" .. guid .. ".jpeg")
-		if not s or not r then
-			return OrigAssets[id]
-		else
-			task.delay(5, pcall, delfile, "tempAssets/" .. guid .. ".jpeg")
-			return r
-		end
-	end
-	return OrigAssets[id]
-end
-local CoreGui;
-local UseCoreGui = false
-if not gethui or not pcall(function() return gethui() end) or not gethui() then
-	CoreGui = cloneref(game:GetService("CoreGui"))
-	UseCoreGui = true
-end
-local Mouse = setmetatable({}, {__index = function(self, key) -- fixed GetMouse detection lololol
-	local vec = UserInputService:GetMouseLocation()
-	vec.Y = vec.Y + GuiService:GetGuiInset().Y
-	if key:lower() == "x" then
-	   return vec.X
-	elseif key:lower() == "y" then
-	    return vec.Y
-	end
-end})
+local getAsset, CoreGui, UseCoreGui = function(id)
+    if getcustomasset and writefile then
+        local guid = HttpService:GenerateGUID(false)
 
-local n1 = 0
-local n2 = 1
-local n3 = 0
+        pcall(writefile, 'tempAssets/' .. guid .. '.jpeg', b64.decode(CustomAssets[id]))
 
-local ScreenGui = Instance.new("ScreenGui")
-local Frame = Instance.new("Frame")
+        local s, r = pcall(getcustomasset, 'tempAssets/' .. guid .. '.jpeg')
+
+        if not s or not r then
+            return OrigAssets[id]
+        else
+            task.delay(5, pcall, delfile, 'tempAssets/' .. guid .. '.jpeg')
+
+            return r
+        end
+    end
+
+    return OrigAssets[id]
+end, nil, false
+
+if not gethui or not pcall(function()
+    return gethui()
+end) or not gethui() then
+    CoreGui = cloneref(game:GetService'CoreGui')
+    UseCoreGui = true
+end
+
+local Mouse, n1, n2, n3, ScreenGui, Frame = setmetatable({}, {
+    __index = function(self, key)
+        local vec = UserInputService:GetMouseLocation()
+
+        vec.Y = vec.Y + GuiService:GetGuiInset().Y
+
+        if key:lower() == 'x' then
+            return vec.X
+        elseif key:lower() == 'y' then
+            return vec.Y
+        end
+    end,
+}), 0, 1, 0, Instance.new'ScreenGui', Instance.new'Frame'
 
 ScreenGui.Name = RandomUTF8String(64)
-ScreenGui.Parent = (UseCoreGui and (CoreGui:FindFirstChild("RobloxGui") or CoreGui)) or gethui()
-Frame.Name = "Container"
+ScreenGui.Parent = (UseCoreGui and (CoreGui:FindFirstChild'RobloxGui' or CoreGui)) or gethui()
+Frame.Name = 'Container'
 Frame.Parent = ScreenGui
 Frame.BackgroundColor3 = Color3.new(1, 1, 1)
 Frame.BackgroundTransparency = 1
 Frame.Size = UDim2.new(0, 100, 0, 100)
+
 UserInputService.InputBegan:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.RightControl then
-		ScreenGui.Enabled = not ScreenGui.Enabled
-	end
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        ScreenGui.Enabled = not ScreenGui.Enabled
+    end
 end)
 
 local function Dragging(p1)
-	Instance.new("UIDragDetector", p1)
+    Instance.new('UIDragDetector', p1)
 end
-
 local function u10(p3)
-	return p3:gsub(" ", "")
+    return p3:gsub(' ', '')
 end
 
 task.spawn(function()
-	-- upvalues: n1 (ref)
-	while task.wait() do
-		n1 = n1 + 0.00392156862745098
+    while task.wait() do
+        n1 = n1 + 0.00392156862745098
 
-		if n1 >= 1 then
-			n1 = 0
-		end
-	end
+        if n1 >= 1 then
+            n1 = 0
+        end
+    end
 end)
 
 return {
-	NewWindow = function(_, p5)
-		-- upvalues: u10 (ref), n3 (ref), TweenService (ref), Frame (ref), UserInputService (ref), n2 (ref), Mouse (ref), n1 (ref), RunService (ref)
-		local ImageLabel = Instance.new("ImageLabel")
-		local Frame2 = Instance.new("Frame")
-		local TextButton = Instance.new("TextButton")
-		local TextLabel = Instance.new("TextLabel")
-		local Frame3 = Instance.new("Frame")
-		local ImageLabel2 = Instance.new("ImageLabel")
-		local UIListLayout = Instance.new("UIListLayout")
-		local Frame4 = Instance.new("Frame")
-		local v30 = u10(p5)
-
-		n3 = n3 + 2
-
-		local n4 = 35
-		local u32 = true
-
-		local function u33(p6)
-			-- upvalues: n4 (ref), TweenService (ref), ImageLabel2 (ref)
-			n4 = n4 + p6
-			TweenService:Create(ImageLabel2, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, 170, 0, n4)
-			}):Play()
-		end
-		local function u34(p7)
-			-- upvalues: n4 (ref), TweenService (ref), ImageLabel2 (ref)
-			n4 = n4 - p7
-			TweenService:Create(ImageLabel2, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, 170, 0, n4)
-			}):Play()
-		end
-
-		ImageLabel.Name = v30 .. "Window"
-		ImageLabel.Parent = Frame
-		ImageLabel.BackgroundColor3 = Color3.new(0.0980392, 0.0980392, 0.0980392)
-		ImageLabel.BackgroundTransparency = 1
-		ImageLabel.Position = UDim2.new(n3, -100, 3, -265)
-		ImageLabel.Size = UDim2.new(0, 170, 0, 30)
-		ImageLabel.ZIndex = 2
-		ImageLabel.Image = getAsset("Sprite_Not_For_Roundify")
-		ImageLabel.ImageColor3 = Color3.new(0.0980392, 0.0980392, 0.0980392)
-		ImageLabel.ScaleType = Enum.ScaleType.Slice
-		ImageLabel.SliceCenter = Rect.new(100, 100, 100, 100)
-		ImageLabel.SliceScale = 0.05
-		Frame2.Name = "Topbar"
-		Frame2.Parent = ImageLabel
-		Frame2.BackgroundColor3 = Color3.new(1, 1, 1)
-		Frame2.BackgroundTransparency = 1
-		Frame2.BorderSizePixel = 0
-		Frame2.Size = UDim2.new(0, 170, 0, 30)
-		Frame2.ZIndex = 2
-		TextButton.Name = "WindowToggle"
-		TextButton.Parent = Frame2
-		TextButton.BackgroundColor3 = Color3.new(1, 1, 1)
-		TextButton.BackgroundTransparency = 1
-		TextButton.Position = UDim2.new(0.822450161, 0, 0, 0)
-		TextButton.Size = UDim2.new(0, 30, 0, 30)
-		TextButton.ZIndex = 2
-		TextButton.Font = Enum.Font.SourceSansSemibold
-		TextButton.Text = "-"
-		TextButton.TextColor3 = Color3.new(1, 1, 1)
-		TextButton.TextSize = 20
-		TextButton.TextWrapped = true
-		TextButton.MouseButton1Down:Connect(function()
-			-- upvalues: u32 (ref), TweenService (ref), TextButton (ref)
-			if not u32 then
-				u32 = true
-				TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					TextTransparency = 1
-				}):Play()
-				TextButton.Text = "-"
-				TextButton.TextSize = 20
-				TextButton.Visible = false
-
-				repeat
-					task.wait()
-				until TextButton.TextTransparency == 1
-
-				TextButton.Visible = true
-				TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					TextTransparency = 0
-				}):Play()
-			elseif u32 then
-				u32 = false
-				TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					TextTransparency = 1
-				}):Play()
-				TextButton.Text = "v"
-				TextButton.TextSize = 14
-				TextButton.Visible = false
-
-				repeat
-					task.wait()
-				until TextButton.TextTransparency == 1
-
-				TextButton.Visible = true
-				TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					TextTransparency = 0
-				}):Play()
-			end
-		end)
-		TextLabel.Name = "WindowTitle"
-		TextLabel.Parent = Frame2
-		TextLabel.BackgroundColor3 = Color3.new(1, 1, 1)
-		TextLabel.BackgroundTransparency = 1
-		TextLabel.Size = UDim2.new(0, 170, 0, 30)
-		TextLabel.ZIndex = 2
-		TextLabel.Font = Enum.Font.SourceSansBold
-		TextLabel.Text = p5
-		TextLabel.TextColor3 = Color3.new(1, 1, 1)
-		TextLabel.TextSize = 17
-		Frame3.Name = "BottomRoundCover"
-		Frame3.Parent = Frame2
-		Frame3.BackgroundColor3 = Color3.new(0.0980392, 0.0980392, 0.0980392)
-		Frame3.BorderSizePixel = 0
-		Frame3.Position = UDim2.new(0, 0, 0.833333313, 0)
-		Frame3.Size = UDim2.new(0, 170, 0, 5)
-		Frame3.ZIndex = 2
-		ImageLabel2.Name = "Body"
-		ImageLabel2.Parent = ImageLabel
-		ImageLabel2.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-		ImageLabel2.BackgroundTransparency = 1
-		ImageLabel2.ClipsDescendants = true
-		ImageLabel2.Size = UDim2.new(0, 170, 0, n4)
-		ImageLabel2.Image = getAsset("Sprite_Not_For_Roundify")
-		ImageLabel2.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-		ImageLabel2.ScaleType = Enum.ScaleType.Slice
-		ImageLabel2.SliceCenter = Rect.new(100, 100, 100, 100)
-		ImageLabel2.SliceScale = 0.05
-		UIListLayout.Name = "Sorter"
-		UIListLayout.Parent = ImageLabel2
-		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		Frame4.Name = "TopbarBodyCover"
-		Frame4.Parent = ImageLabel2
-		Frame4.BackgroundColor3 = Color3.new(1, 1, 1)
-		Frame4.BackgroundTransparency = 1
-		Frame4.BorderSizePixel = 0
-		Frame4.Size = UDim2.new(0, 170, 0, 30)
-		Dragging(ImageLabel)
-
-		return {
-			NewSection = function(_, p9)
-				-- upvalues: u10 (ref), TweenService (ref), ImageLabel2 (ref), u33 (ref), TextButton (ref), u32 (ref), u34 (ref), UserInputService (ref), n2 (ref), Mouse (ref), n1 (ref), RunService (ref)
-				local Frame5 = Instance.new("Frame")
-				local Frame6 = Instance.new("Frame")
-				local TextButton2 = Instance.new("TextButton")
-				local TextLabel2 = Instance.new("TextLabel")
-				local UIListLayout2 = Instance.new("UIListLayout")
-				local v50 = u10(p9)
-				local s1 = "v"
-				local n5 = 30
-				local u53 = false
-
-				local function u54(p10)
-					-- upvalues: n5 (ref), TweenService (ref), Frame5 (ref)
-					n5 = n5 + p10
-					TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-						Size = UDim2.new(0, 170, 0, n5)
-					}):Play()
-				end
-				local function u55(p11)
-					-- upvalues: n5 (ref), TweenService (ref), Frame5 (ref)
-					n5 = n5 - p11
-					TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-						Size = UDim2.new(0, 170, 0, n5)
-					}):Play()
-				end
-
-				Frame5.Name = v50 .. "Section"
-				Frame5.Parent = ImageLabel2
-				Frame5.BackgroundColor3 = Color3.new(0.176471, 0.176471, 0.176471)
-				Frame5.BorderSizePixel = 0
-				Frame5.ClipsDescendants = true
-				Frame5.Size = UDim2.new(0, 170, 0, n5)
-				u33(30)
-				Frame6.Name = "SectionInfo"
-				Frame6.Parent = Frame5
-				Frame6.BackgroundColor3 = Color3.new(1, 1, 1)
-				Frame6.BackgroundTransparency = 1
-				Frame6.Size = UDim2.new(0, 170, 0, 30)
-				TextButton2.Name = "SectionToggle"
-				TextButton2.Parent = Frame6
-				TextButton2.BackgroundColor3 = Color3.new(1, 1, 1)
-				TextButton2.BackgroundTransparency = 1
-				TextButton2.Position = UDim2.new(0.822450161, 0, 0, 0)
-				TextButton2.Size = UDim2.new(0, 30, 0, 30)
-				TextButton2.ZIndex = 2
-				TextButton2.Font = Enum.Font.SourceSansSemibold
-				TextButton2.Text = s1
-				TextButton2.TextColor3 = Color3.new(1, 1, 1)
-				TextButton2.TextSize = 14
-				TextButton2.TextWrapped = true
-				TextLabel2.Name = "SectionTitle"
-				TextLabel2.Parent = Frame6
-				TextLabel2.BackgroundColor3 = Color3.new(1, 1, 1)
-				TextLabel2.BackgroundTransparency = 1
-				TextLabel2.BorderSizePixel = 0
-				TextLabel2.Position = UDim2.new(0.052941177, 0, 0, 0)
-				TextLabel2.Size = UDim2.new(0, 125, 0, 30)
-				TextLabel2.Font = Enum.Font.SourceSansBold
-				TextLabel2.Text = p9
-				TextLabel2.TextColor3 = Color3.new(1, 1, 1)
-				TextLabel2.TextSize = 17
-				TextLabel2.TextXAlignment = Enum.TextXAlignment.Left
-				UIListLayout2.Name = "Layout"
-				UIListLayout2.Parent = Frame5
-				UIListLayout2.SortOrder = Enum.SortOrder.LayoutOrder
-				TextButton.MouseButton1Down:Connect(function()
-					-- upvalues: u32 (ref), u33 (ref), TextButton2 (ref), s1 (ref), TweenService (ref), Frame5 (ref), u34 (ref)
-					if not u32 then
-						u33(30)
-						TextButton2.Text = s1
-						TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							BackgroundTransparency = 0
-						}):Play()
-					elseif u32 then
-						u34(30)
-						TextButton2.Text = ""
-						TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							BackgroundTransparency = 1
-						}):Play()
-					end
-				end)
-				TextButton2.MouseButton1Down:Connect(function()
-					-- upvalues: u53 (ref), s1 (ref), TweenService (ref), TextButton2 (ref), TextButton (ref)
-					if not u53 then
-						u53 = true
-						s1 = "-"
-						TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							TextTransparency = 1
-						}):Play()
-						TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							TextTransparency = 1
-						}):Play()
-						TextButton2.Text = s1
-						TextButton2.TextSize = 20
-						TextButton2.Visible = false
-						TextButton.Visible = false
-
-						repeat
-							task.wait()
-						until TextButton2.TextTransparency == 1 and TextButton.TextTransparency == 1
-
-						TextButton2.Visible = true
-						TextButton.Visible = true
-						TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							TextTransparency = 0
-						}):Play()
-						TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							TextTransparency = 0
-						}):Play()
-					elseif u53 then
-						u53 = false
-						s1 = "v"
-						TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							TextTransparency = 1
-						}):Play()
-						TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							TextTransparency = 1
-						}):Play()
-						TextButton2.Text = s1
-						TextButton2.TextSize = 14
-						TextButton2.Visible = false
-						TextButton.Visible = false
-
-						repeat
-							task.wait()
-						until TextButton2.TextTransparency == 1 and TextButton.TextTransparency == 1
-
-						TextButton2.Visible = true
-						TextButton.Visible = true
-						TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							TextTransparency = 0
-						}):Play()
-						TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-							TextTransparency = 0
-						}):Play()
-					end
-				end)
-
-				return {
-					CreateToggle = function(_, p13, p14)
-						-- upvalues: u10 (ref), Frame5 (ref), TweenService (ref), TextButton2 (ref), u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref), TextButton (ref), u32 (ref)
-						local Frame7 = Instance.new("Frame")
-						local TextLabel3 = Instance.new("TextLabel")
-						local ImageLabel3 = Instance.new("ImageLabel")
-						local ImageButton = Instance.new("ImageButton")
-						local v66 = u10(p13)
-						local u67 = false
-
-						Frame7.Name = v66 .. "ToggleHolder"
-						Frame7.Parent = Frame5
-						Frame7.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						Frame7.BorderSizePixel = 0
-						Frame7.Size = UDim2.new(0, 170, 0, 30)
-						TextLabel3.Name = "ToggleTitle"
-						TextLabel3.Parent = Frame7
-						TextLabel3.BackgroundColor3 = Color3.new(1, 1, 1)
-						TextLabel3.BackgroundTransparency = 1
-						TextLabel3.BorderSizePixel = 0
-						TextLabel3.Position = UDim2.new(0.052941177, 0, 0, 0)
-						TextLabel3.Size = UDim2.new(0, 125, 0, 30)
-						TextLabel3.Font = Enum.Font.SourceSansBold
-						TextLabel3.Text = p13
-						TextLabel3.TextColor3 = Color3.new(1, 1, 1)
-						TextLabel3.TextSize = 17
-						TextLabel3.TextXAlignment = Enum.TextXAlignment.Left
-						ImageLabel3.Name = "ToggleBackground"
-						ImageLabel3.Parent = Frame7
-						ImageLabel3.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel3.BackgroundTransparency = 1
-						ImageLabel3.BorderSizePixel = 0
-						ImageLabel3.Position = UDim2.new(0.847058833, 0, 0.166666672, 0)
-						ImageLabel3.Size = UDim2.new(0, 20, 0, 20)
-						ImageLabel3.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel3.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageButton.Name = "ToggleButton"
-						ImageButton.Parent = ImageLabel3
-						ImageButton.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageButton.BackgroundTransparency = 1
-						ImageButton.Position = UDim2.new(0, 2, 0, 2)
-						ImageButton.Size = UDim2.new(0, 16, 0, 16)
-						ImageButton.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageButton.ImageColor3 = Color3.new(1, 0.341176, 0.341176)
-						ImageButton.ImageTransparency = 1
-						ImageButton.MouseButton1Down:Connect(function()
-							-- upvalues: u67 (ref), TweenService (ref), ImageButton (ref), p14 (ref)
-							u67 = not u67
-
-							if not u67 then
-								if not u67 then
-									TweenService:Create(ImageButton, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										ImageTransparency = 1
-									}):Play()
-								end
-							else
-								TweenService:Create(ImageButton, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									ImageTransparency = 0
-								}):Play()
-							end
-
-							p14(u67)
-						end)
-						TextButton2.MouseButton1Down:Connect(function()
-							-- upvalues: u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref)
-							if u53 then
-								if u53 then
-									u55(30)
-									u34(30)
-								end
-							else
-								u54(30)
-								u33(30)
-							end
-						end)
-						TextButton.MouseButton1Down:Connect(function()
-							-- upvalues: u32 (ref), u53 (ref), u33 (ref), TweenService (ref), TextButton2 (ref), Frame5 (ref), u34 (ref)
-							if u32 then
-								if u32 then
-									if not u53 then
-										if not u53 then
-											TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-												BackgroundTransparency = 1
-											}):Play()
-										end
-									else
-										u34(30)
-										TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											Rotation = 0
-										}):Play()
-										TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											BackgroundTransparency = 1
-										}):Play()
-									end
-								end
-							elseif not u53 then
-								if not u53 then
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0
-									}):Play()
-								end
-							else
-								u33(30)
-								TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Rotation = 360
-								}):Play()
-								TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									BackgroundTransparency = 0
-								}):Play()
-							end
-
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 1
-							}):Play()
-							TextButton2.Visible = false
-
-							repeat
-								task.wait()
-							until TextButton2.TextTransparency == 1
-
-							TextButton2.Visible = true
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 0
-							}):Play()
-						end)
-					end,
-					CreateSlider = function(_, p16, p17, p18, p19, p20, p21)
-						-- upvalues: u10 (ref), Frame5 (ref), TweenService (ref), UserInputService (ref), TextButton2 (ref), u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref), TextButton (ref), u32 (ref)
-						local Frame8 = Instance.new("Frame")
-						local TextLabel4 = Instance.new("TextLabel")
-						local ImageLabel4 = Instance.new("ImageLabel")
-						local TextLabel5 = Instance.new("TextLabel")
-						local ImageLabel5 = Instance.new("ImageLabel")
-						local ImageLabel6 = Instance.new("ImageLabel")
-						local v84 = u10(p16)
-						local u85 = false
-						local u86 = p20
-
-						Frame8.Name = v84 .. "SliderHolder"
-						Frame8.Parent = Frame5
-						Frame8.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						Frame8.BorderSizePixel = 0
-						Frame8.Size = UDim2.new(0, 170, 0, 30)
-						TextLabel4.Name = "SliderTitle"
-						TextLabel4.Parent = Frame8
-						TextLabel4.BackgroundColor3 = Color3.new(1, 1, 1)
-						TextLabel4.BackgroundTransparency = 1
-						TextLabel4.BorderSizePixel = 0
-						TextLabel4.Position = UDim2.new(0.052941177, 0, 0, 0)
-						TextLabel4.Size = UDim2.new(0, 125, 0, 15)
-						TextLabel4.Font = Enum.Font.SourceSansSemibold
-						TextLabel4.Text = p16
-						TextLabel4.TextColor3 = Color3.new(1, 1, 1)
-						TextLabel4.TextSize = 17
-						TextLabel4.TextXAlignment = Enum.TextXAlignment.Left
-						ImageLabel4.Name = "SliderValueHolder"
-						ImageLabel4.Parent = Frame8
-						ImageLabel4.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel4.BackgroundTransparency = 1
-						ImageLabel4.Position = UDim2.new(0.747058809, 0, 0, 0)
-						ImageLabel4.Size = UDim2.new(0, 35, 0, 15)
-						ImageLabel4.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel4.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel4.ImageTransparency = 0.5
-						ImageLabel4.ScaleType = Enum.ScaleType.Slice
-						ImageLabel4.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel4.SliceScale = 0.02
-						TextLabel5.Name = "SliderValue"
-						TextLabel5.Parent = ImageLabel4
-						TextLabel5.BackgroundColor3 = Color3.new(1, 1, 1)
-						TextLabel5.BackgroundTransparency = 1
-						TextLabel5.Size = UDim2.new(0, 35, 0, 15)
-						TextLabel5.Font = Enum.Font.SourceSansSemibold
-						TextLabel5.Text = tostring(p19 or u86 and tonumber(string.format("%.2f", p19)))
-						TextLabel5.TextColor3 = Color3.new(1, 1, 1)
-						TextLabel5.TextSize = 14
-						ImageLabel5.Name = "SliderBackground"
-						ImageLabel5.Parent = Frame8
-						ImageLabel5.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel5.BackgroundTransparency = 1
-						ImageLabel5.Position = UDim2.new(0.0529999994, 0, 0.649999976, 0)
-						ImageLabel5.Selectable = true
-						ImageLabel5.Size = UDim2.new(0, 153, 0, 5)
-						ImageLabel5.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel5.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel5.ImageTransparency = 0.5
-						ImageLabel5.ScaleType = Enum.ScaleType.Slice
-						ImageLabel5.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel5.ClipsDescendants = true
-						ImageLabel5.SliceScale = 0.02
-						ImageLabel6.Name = "Slider"
-						ImageLabel6.Parent = ImageLabel5
-						ImageLabel6.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel6.BackgroundTransparency = 1
-						ImageLabel6.Size = UDim2.new(((p19 or p17) - p17) / (p18 - p17), 0, 0, 5)
-						ImageLabel6.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel6.ScaleType = Enum.ScaleType.Slice
-						ImageLabel6.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel6.SliceScale = 0.02
-
-						local function u87(p22)
-							-- upvalues: ImageLabel5 (ref), TweenService (ref), ImageLabel6 (ref), p18 (ref), p17 (ref), u86 (ref), TextLabel5 (ref), p21 (ref)
-							local uDim2 = UDim2.new(math.clamp((p22.Position.X - ImageLabel5.AbsolutePosition.X) / ImageLabel5.AbsoluteSize.X, 0, 1), 0, 1.15, 0)
-
-							TweenService:Create(ImageLabel6, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								Size = uDim2
-							}):Play()
-
-							local v165 = math.floor(uDim2.X.Scale * p18 / p18 * (p18 - p17) + p17)
-							local v166 = uDim2.X.Scale * p18 / p18 * (p18 - p17) + p17
-							local v167 = u86 and v166 or v165
-							local num = tonumber(string.format("%.2f", v167))
-
-							TextLabel5.Text = tostring(num)
-							p21(num)
-						end
-
-						ImageLabel5.InputBegan:Connect(function(input)
-							-- upvalues: u85 (ref)
-							if input.UserInputType == Enum.UserInputType.MouseButton1 then
-								u85 = true
-							end
-						end)
-						ImageLabel5.InputEnded:Connect(function(input)
-							-- upvalues: u85 (ref)
-							if input.UserInputType == Enum.UserInputType.MouseButton1 then
-								u85 = false
-							end
-						end)
-						ImageLabel5.InputBegan:Connect(function(input)
-							-- upvalues: u87 (ref)
-							if input.UserInputType == Enum.UserInputType.MouseButton1 then
-								u87(input)
-							end
-						end)
-						UserInputService.InputChanged:Connect(function(input)
-							-- upvalues: u85 (ref), u87 (ref)
-							if u85 and input.UserInputType == Enum.UserInputType.MouseMovement then
-								u87(input)
-							end
-						end)
-						TextButton2.MouseButton1Down:Connect(function()
-							-- upvalues: u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref)
-							if not u53 then
-								u54(30)
-								u33(30)
-							elseif u53 then
-								u55(30)
-								u34(30)
-							end
-						end)
-						TextButton.MouseButton1Down:Connect(function()
-							-- upvalues: u32 (ref), u53 (ref), u33 (ref), TweenService (ref), TextButton2 (ref), Frame5 (ref), u34 (ref)
-							if not u32 then
-								if u53 then
-									u33(30)
-									TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										Rotation = 360
-									}):Play()
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0
-									}):Play()
-								elseif not u53 then
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0
-									}):Play()
-								end
-							elseif u32 then
-								if not u53 then
-									if not u53 then
-										TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											BackgroundTransparency = 1
-										}):Play()
-									end
-								else
-									u34(30)
-									TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										Rotation = 0
-									}):Play()
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 1
-									}):Play()
-								end
-							end
-
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 1
-							}):Play()
-							TextButton2.Visible = false
-
-							repeat
-								task.wait()
-							until TextButton2.TextTransparency == 1
-
-							TextButton2.Visible = true
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 0
-							}):Play()
-						end)
-					end,
-					CreateColorPicker = function(_, p24, p25, p26)
-						-- upvalues: u10 (ref), n2 (ref), Frame5 (ref), ImageLabel2 (ref), TweenService (ref), Mouse (ref), n1 (ref), RunService (ref), TextButton2 (ref), u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref), TextButton (ref), u32 (ref)
-						local Frame9 = Instance.new("Frame")
-						local Frame10 = Instance.new("Frame")
-						local TextLabel6 = Instance.new("TextLabel")
-						local ImageLabel7 = Instance.new("ImageLabel")
-						local ImageButton = Instance.new("ImageButton")
-						local TextLabel7 = Instance.new("TextLabel")
-						local ImageButton2 = Instance.new("ImageButton")
-						local ImageLabel8 = Instance.new("ImageLabel")
-						local TextLabel8 = Instance.new("TextLabel")
-						local ImageLabel9 = Instance.new("ImageLabel")
-						local TextLabel9 = Instance.new("TextLabel")
-						local ImageLabel10 = Instance.new("ImageLabel")
-						local TextLabel10 = Instance.new("TextLabel")
-						local ImageLabel11 = Instance.new("ImageLabel")
-						local ImageLabel12 = Instance.new("ImageLabel")
-						local ImageLabel13 = Instance.new("ImageLabel")
-						local Frame11 = Instance.new("Frame")
-						local ImageLabel14 = Instance.new("ImageLabel")
-						local ImageLabel15 = Instance.new("ImageLabel")
-						local ImageLabel16 = Instance.new("ImageLabel")
-						local v113 = u10(p24)
-
-						n2 = n2 + 1
-
-						local u114 = false
-						local u115 = false
-						local color3 = nil
-						local color3_2 = nil
-
-						Frame9.Name = v113 .. "ColorPickerHolder"
-						Frame9.Parent = Frame5
-						Frame9.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						Frame9.BorderSizePixel = 0
-						Frame9.Size = UDim2.new(0, 170, 0, 30)
-						TextLabel7.Name = "ColorPickerTitle"
-						TextLabel7.Parent = Frame9
-						TextLabel7.BackgroundColor3 = Color3.new(1, 1, 1)
-						TextLabel7.BackgroundTransparency = 1
-						TextLabel7.BorderSizePixel = 0
-						TextLabel7.Position = UDim2.new(0.052941177, 0, 0, 0)
-						TextLabel7.Size = UDim2.new(0, 125, 0, 30)
-						TextLabel7.Font = Enum.Font.SourceSansBold
-						TextLabel7.Text = p24
-						TextLabel7.TextColor3 = Color3.new(1, 1, 1)
-						TextLabel7.TextSize = 17
-						TextLabel7.TextXAlignment = Enum.TextXAlignment.Left
-						ImageButton2.Name = "ColorPickerToggle"
-						ImageButton2.Parent = Frame9
-						ImageButton2.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageButton2.BackgroundTransparency = 1
-						ImageButton2.Position = UDim2.new(0.822000027, 0, 0.166999996, 0)
-						ImageButton2.Size = UDim2.new(0, 22, 0, 20)
-						ImageButton2.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageButton2.ImageColor3 = p25
-						ImageButton2.ScaleType = Enum.ScaleType.Slice
-						ImageButton2.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageButton2.SliceScale = 0.04
-						ImageLabel8.Name = "ColorPickerMain"
-						ImageLabel8.Parent = Frame9
-						ImageLabel8.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						ImageLabel8.BackgroundTransparency = 1
-						ImageLabel8.ClipsDescendants = true
-						ImageLabel8.BorderSizePixel = 0
-						ImageLabel8.Position = UDim2.new(1.04705882, 0, -1.36666667, 0)
-						ImageLabel8.Size = UDim2.new(0, 0, 0, 175)
-						ImageLabel8.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel8.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						ImageLabel8.ScaleType = Enum.ScaleType.Slice
-						ImageLabel8.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel8.SliceScale = 0.05
-						ImageLabel8.ZIndex = 1 + n2
-						Frame10.Name = "RainbowToggleHolder"
-						Frame10.Parent = ImageLabel8
-						Frame10.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						Frame10.BackgroundTransparency = 1
-						Frame10.BorderSizePixel = 0
-						Frame10.Position = UDim2.new(0, 0, 0.819999993, 0)
-						Frame10.Size = UDim2.new(0, 170, 0, 30)
-						Frame10.ZIndex = 1 + n2
-						TextLabel6.Name = "RainbowTitle"
-						TextLabel6.Parent = Frame10
-						TextLabel6.BackgroundColor3 = Color3.new(1, 1, 1)
-						TextLabel6.BackgroundTransparency = 1
-						TextLabel6.BorderSizePixel = 0
-						TextLabel6.Position = UDim2.new(0.052941177, 0, 0, 0)
-						TextLabel6.Size = UDim2.new(0, 125, 0, 30)
-						TextLabel6.Font = Enum.Font.SourceSansBold
-						TextLabel6.Text = "Rainbow"
-						TextLabel6.TextColor3 = Color3.new(1, 1, 1)
-						TextLabel6.TextSize = 17
-						TextLabel6.TextXAlignment = Enum.TextXAlignment.Left
-						TextLabel6.ZIndex = 1 + n2
-						ImageLabel7.Name = "RainbowBackground"
-						ImageLabel7.Parent = Frame10
-						ImageLabel7.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel7.BackgroundTransparency = 1
-						ImageLabel7.BorderSizePixel = 0
-						ImageLabel7.Position = UDim2.new(0.847058833, 0, 0.166666672, 0)
-						ImageLabel7.Size = UDim2.new(0, 20, 0, 20)
-						ImageLabel7.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel7.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel7.ZIndex = 1 + n2
-						ImageButton.Name = "RainbowToggleButton"
-						ImageButton.Parent = ImageLabel7
-						ImageButton.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageButton.BackgroundTransparency = 1
-						ImageButton.Position = UDim2.new(0, 2, 0, 2)
-						ImageButton.Size = UDim2.new(0, 16, 0, 16)
-						ImageButton.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageButton.ImageColor3 = Color3.new(1, 0.341176, 0.341176)
-						ImageButton.ImageTransparency = 1
-						ImageButton.ZIndex = 1 + n2
-						TextLabel8.Name = "ColorValueR"
-						TextLabel8.Parent = ImageLabel8
-						TextLabel8.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						TextLabel8.BackgroundTransparency = 1
-						TextLabel8.BorderSizePixel = 0
-						TextLabel8.ClipsDescendants = true
-						TextLabel8.Position = UDim2.new(0, 7, 0, 127)
-						TextLabel8.Size = UDim2.new(0, 50, 0, 16)
-						TextLabel8.ZIndex = 2 + n2
-						TextLabel8.Font = Enum.Font.SourceSansBold
-						TextLabel8.Text = "R: 000"
-						TextLabel8.TextColor3 = Color3.new(1, 1, 1)
-						TextLabel8.TextSize = 14
-						ImageLabel9.Name = "ColorValueRRound"
-						ImageLabel9.Parent = TextLabel8
-						ImageLabel9.Active = true
-						ImageLabel9.AnchorPoint = Vector2.new(0.5, 0.5)
-						ImageLabel9.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel9.BackgroundTransparency = 1
-						ImageLabel9.Position = UDim2.new(0.5, 0, 0.5, 0)
-						ImageLabel9.Selectable = true
-						ImageLabel9.Size = UDim2.new(1, 0, 1, 0)
-						ImageLabel9.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel9.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel9.ScaleType = Enum.ScaleType.Slice
-						ImageLabel9.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel9.SliceScale = 0.04
-						ImageLabel9.ZIndex = 1 + n2
-						TextLabel10.Name = "ColorValueG"
-						TextLabel10.Parent = ImageLabel8
-						TextLabel10.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						TextLabel10.BackgroundTransparency = 1
-						TextLabel10.BorderSizePixel = 0
-						TextLabel10.ClipsDescendants = true
-						TextLabel10.Position = UDim2.new(0, 60, 0, 127)
-						TextLabel10.Size = UDim2.new(0, 51, 0, 16)
-						TextLabel10.ZIndex = 2 + n2
-						TextLabel10.Font = Enum.Font.SourceSansBold
-						TextLabel10.Text = "G: 000"
-						TextLabel10.TextColor3 = Color3.new(1, 1, 1)
-						TextLabel10.TextSize = 14
-						ImageLabel11.Name = "ColorValueGRound"
-						ImageLabel11.Parent = TextLabel10
-						ImageLabel11.Active = true
-						ImageLabel11.AnchorPoint = Vector2.new(0.5, 0.5)
-						ImageLabel11.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel11.BackgroundTransparency = 1
-						ImageLabel11.Position = UDim2.new(0.5, 0, 0.5, 0)
-						ImageLabel11.Selectable = true
-						ImageLabel11.Size = UDim2.new(1, 0, 1, 0)
-						ImageLabel11.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel11.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel11.ScaleType = Enum.ScaleType.Slice
-						ImageLabel11.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel11.SliceScale = 0.04
-						ImageLabel11.ZIndex = 1 + n2
-						TextLabel9.Name = "ColorValueB"
-						TextLabel9.Parent = ImageLabel8
-						TextLabel9.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						TextLabel9.BackgroundTransparency = 1
-						TextLabel9.BorderSizePixel = 0
-						TextLabel9.ClipsDescendants = true
-						TextLabel9.Position = UDim2.new(0, 114, 0, 127)
-						TextLabel9.Size = UDim2.new(0, 50, 0, 16)
-						TextLabel9.ZIndex = 2 + n2
-						TextLabel9.Font = Enum.Font.SourceSansBold
-						TextLabel9.Text = "B: 000"
-						TextLabel9.TextColor3 = Color3.new(1, 1, 1)
-						TextLabel9.TextSize = 14
-						ImageLabel10.Name = "ColorValueBRound"
-						ImageLabel10.Parent = TextLabel9
-						ImageLabel10.Active = true
-						ImageLabel10.AnchorPoint = Vector2.new(0.5, 0.5)
-						ImageLabel10.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel10.BackgroundTransparency = 1
-						ImageLabel10.Position = UDim2.new(0.5, 0, 0.5, 0)
-						ImageLabel10.Selectable = true
-						ImageLabel10.Size = UDim2.new(1, 0, 1, 0)
-						ImageLabel10.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel10.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel10.ScaleType = Enum.ScaleType.Slice
-						ImageLabel10.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel10.SliceScale = 0.04
-						ImageLabel10.ZIndex = 1 + n2
-						ImageLabel12.Name = "RoundHueHolder"
-						ImageLabel12.Parent = ImageLabel8
-						ImageLabel12.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel12.BackgroundTransparency = 1
-						ImageLabel12.ClipsDescendants = true
-						ImageLabel12.Position = UDim2.new(0, 136, 0, 6)
-						ImageLabel12.Size = UDim2.new(0, 28, 0, 114)
-						ImageLabel12.ZIndex = 2 + n2
-						ImageLabel12.Image = getAsset("Images_Subtraction_1")
-						ImageLabel12.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						ImageLabel12.ScaleType = Enum.ScaleType.Slice
-						ImageLabel12.SliceCenter = Rect.new(128, 128, 128, 128)
-						ImageLabel12.SliceScale = 0.05
-						ImageLabel13.Name = "ColorHue"
-						ImageLabel13.Parent = ImageLabel12
-						ImageLabel13.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel13.BackgroundTransparency = 1
-						ImageLabel13.BorderSizePixel = 0
-						ImageLabel13.Size = UDim2.new(0, 28, 0, 114)
-						ImageLabel13.Image = "http://www.roblox.com/asset/?id=4801885250"
-						ImageLabel13.ScaleType = Enum.ScaleType.Crop
-						ImageLabel13.ZIndex = 1 + n2
-						Frame11.Name = "HueMarker"
-						Frame11.Parent = ImageLabel12
-						Frame11.BackgroundColor3 = Color3.new(0.294118, 0.294118, 0.294118)
-						Frame11.BorderSizePixel = 0
-						Frame11.Position = UDim2.new(-0.25, 0, 0, 0)
-						Frame11.Size = UDim2.new(0, 42, 0, 5)
-						Frame11.ZIndex = 1 + n2
-						ImageLabel14.Name = "RoundSaturationHolder"
-						ImageLabel14.Parent = ImageLabel8
-						ImageLabel14.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel14.BackgroundTransparency = 1
-						ImageLabel14.ClipsDescendants = true
-						ImageLabel14.Position = UDim2.new(0, 7, 0, 6)
-						ImageLabel14.Size = UDim2.new(0, 122, 0, 114)
-						ImageLabel14.ZIndex = 2 + n2
-						ImageLabel14.Image = getAsset("Images_Subtraction_1")
-						ImageLabel14.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						ImageLabel14.ScaleType = Enum.ScaleType.Slice
-						ImageLabel14.SliceCenter = Rect.new(128, 128, 128, 128)
-						ImageLabel14.SliceScale = 0.05
-						ImageLabel15.Name = "ColorSelector"
-						ImageLabel15.Parent = ImageLabel14
-						ImageLabel15.BackgroundColor3 = p25
-						ImageLabel15.BorderSizePixel = 0
-						ImageLabel15.Size = UDim2.new(0, 122, 0, 114)
-						ImageLabel15.Image = getAsset("Saturation_Value")
-						ImageLabel15.ZIndex = 1 + n2
-						ImageLabel16.Name = "SaturationMarker"
-						ImageLabel16.Parent = ImageLabel14
-						ImageLabel16.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel16.BackgroundTransparency = 1
-						ImageLabel16.Size = UDim2.new(0, 0, 0, 0)
-						ImageLabel16.Image = "http://www.roblox.com/asset/?id=4805639000"
-						ImageLabel16.ZIndex = 1 + n2
-
-						local function u118()
-							-- upvalues: ImageButton2 (ref), TextLabel8 (ref), TextLabel10 (ref), TextLabel9 (ref)
-							local v173 = ImageButton2.ImageColor3.r * 255
-							local v174 = ImageButton2.ImageColor3.g * 255
-							local v175 = ImageButton2.ImageColor3.b * 255
-
-							TextLabel8.Text = "R: " .. math.floor(v173)
-							TextLabel10.Text = "G: " .. math.floor(v174)
-							TextLabel9.Text = "B: " .. math.floor(v175)
-						end
-
-						u118()
-						ImageButton2.MouseButton1Down:Connect(function()
-							-- upvalues: u114 (ref), ImageLabel2 (ref), Frame5 (ref), TweenService (ref), ImageLabel8 (ref)
-							if not u114 then
-								u114 = true
-								ImageLabel2.ClipsDescendants = false
-								Frame5.ClipsDescendants = false
-								TweenService:Create(ImageLabel8, TweenInfo.new(0.75, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 171, 0, 175)
-								}):Play()
-							elseif u114 then
-								u114 = false
-								TweenService:Create(ImageLabel8, TweenInfo.new(0.75, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 0, 0, 175)
-								}):Play()
-							end
-						end)
-
-						local t1 = {
-							H = 1,
-							S = 1,
-							V = 1
-						}
-						local u120 = nil
-						local u121 = nil
-
-						local function u122(p27)
-							-- upvalues: Mouse (ref)
-							local v177 = Mouse.X - p27.AbsolutePosition.X
-							local v178 = Mouse.Y - p27.AbsolutePosition.Y
-							local AbsoluteSizeX = p27.AbsoluteSize.X
-							local AbsoluteSizeY = p27.AbsoluteSize.Y
-							local v181 = math.clamp(v177, 0, AbsoluteSizeX)
-							local v182 = math.clamp(v178, 0, AbsoluteSizeY)
-
-							return v181 / AbsoluteSizeX, v182 / AbsoluteSizeY
-						end
-						local function u123(p28)
-							-- upvalues: Mouse (ref)
-							local v184 = Mouse.Y - p28.AbsolutePosition.Y
-
-							MaxY2 = p28.AbsoluteSize.Y
-
-							return math.clamp(v184, -10, MaxY2) / MaxY2
-						end
-						local function u124()
-							-- upvalues: u118 (ref), color3 (ref), t1 (ref), ImageButton2 (ref), ImageLabel15 (ref), p26 (ref)
-							u118()
-							color3 = Color3.fromHSV(t1.H, t1.S, t1.V)
-							ImageButton2.ImageColor3 = color3
-							ImageLabel15.BackgroundColor3 = Color3.fromHSV(t1.H, 1, 1)
-							p26(ImageButton2.ImageColor3)
-						end
-
-						ImageLabel15.MouseLeave:Connect(function()
-							-- upvalues: u120 (ref), u121 (ref)
-							if u120 then
-								u120:Disconnect()
-								u120 = nil
-							end
-
-							if u121 then
-								u121:Disconnect()
-								u121 = nil
-							end
-						end)
-						ImageLabel13.MouseLeave:Connect(function()
-							-- upvalues: u120 (ref), u121 (ref)
-							if u120 then
-								u120:Disconnect()
-								u120 = nil
-							end
-
-							if u121 then
-								u121:Disconnect()
-								u121 = nil
-							end
-						end)
-						ImageButton.MouseButton1Down:Connect(function()
-							-- upvalues: u115 (ref), TweenService (ref), ImageButton (ref), color3_2 (ref), n1 (ref), ImageButton2 (ref), ImageLabel15 (ref), p26 (ref), u118 (ref)
-							if u115 then
-								if u115 then
-									u115 = false
-									TweenService:Create(ImageButton, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										ImageTransparency = 1
-									}):Play()
-								end
-							else
-								u115 = true
-								TweenService:Create(ImageButton, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									ImageTransparency = 0
-								}):Play()
-							end
-
-							while u115 do
-								color3_2 = Color3.fromHSV(n1, 1, 1)
-								ImageButton2.ImageColor3 = color3_2
-								ImageLabel15.BackgroundColor3 = color3_2
-								p26(color3_2)
-								u118()
-								task.wait()
-							end
-						end)
-						ImageLabel15.InputBegan:Connect(function(input)
-							-- upvalues: u115 (ref), u120 (ref), RunService (ref), u122 (ref), ImageLabel14 (ref), ImageLabel16 (ref), t1 (ref), u124 (ref)
-							if input.UserInputType == Enum.UserInputType.MouseButton1 and not u115 then
-								if u120 then
-									u120:Disconnect()
-								end
-
-								u120 = RunService.RenderStepped:Connect(function()
-									-- upvalues: u122 (ref), ImageLabel14 (ref), ImageLabel16 (ref), t1 (ref), u124 (ref)
-									local v192, v193 = u122(ImageLabel14)
-
-									ImageLabel16.Position = UDim2.new(v192, 0, v193, 0)
-									t1.S = v192
-									t1.V = 1 - v193
-									u124()
-								end)
-							end
-						end)
-						ImageLabel15.InputEnded:Connect(function(input)
-							-- upvalues: u120 (ref)
-							if input.UserInputType == Enum.UserInputType.MouseButton1 and u120 then
-								u120:Disconnect()
-							end
-						end)
-						ImageLabel13.InputBegan:Connect(function(input)
-							-- upvalues: u115 (ref), u121 (ref), RunService (ref), u122 (ref), ImageLabel12 (ref), u123 (ref), t1 (ref), TweenService (ref), Frame11 (ref), u124 (ref)
-							if input.UserInputType == Enum.UserInputType.MouseButton1 and not u115 then
-								if u121 then
-									u121:Disconnect()
-								end
-
-								u121 = RunService.RenderStepped:Connect(function()
-									-- upvalues: u122 (ref), ImageLabel12 (ref), u123 (ref), t1 (ref), TweenService (ref), Frame11 (ref), u124 (ref)
-									local _, v195 = u122(ImageLabel12)
-									local v196 = u123(ImageLabel12)
-
-									t1.H = 1 - v195
-									TweenService:Create(Frame11, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										Position = UDim2.new(-0.25, 0, v196, 0)
-									}):Play()
-									u124()
-								end)
-							end
-						end)
-						ImageLabel13.InputEnded:Connect(function(input)
-							-- upvalues: u121 (ref)
-							if input.UserInputType == Enum.UserInputType.MouseButton1 and u121 then
-								u121:Disconnect()
-							end
-						end)
-						TextButton2.MouseButton1Down:Connect(function()
-							-- upvalues: u53 (ref), ImageLabel2 (ref), Frame5 (ref), u54 (ref), u33 (ref), u114 (ref), TweenService (ref), ImageLabel8 (ref), u55 (ref), u34 (ref)
-							if u53 then
-								if u53 then
-									u114 = false
-									TweenService:Create(ImageLabel8, TweenInfo.new(0.75, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										Size = UDim2.new(0, 0, 0, 175)
-									}):Play()
-									ImageLabel2.ClipsDescendants = true
-									Frame5.ClipsDescendants = true
-									u55(30)
-									u34(30)
-								end
-							else
-								ImageLabel2.ClipsDescendants = true
-								Frame5.ClipsDescendants = true
-								u54(30)
-								u33(30)
-							end
-						end)
-						TextButton.MouseButton1Down:Connect(function()
-							-- upvalues: u114 (ref), TweenService (ref), ImageLabel8 (ref), ImageLabel2 (ref), Frame5 (ref), u32 (ref), u53 (ref), u33 (ref), TextButton2 (ref), u34 (ref)
-							u114 = false
-							TweenService:Create(ImageLabel8, TweenInfo.new(0.75, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								Size = UDim2.new(0, 0, 0, 175)
-							}):Play()
-							ImageLabel2.ClipsDescendants = true
-							Frame5.ClipsDescendants = true
-
-							if u32 then
-								if u32 then
-									if u53 then
-										u34(30)
-										TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											Rotation = 0
-										}):Play()
-										TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											BackgroundTransparency = 1
-										}):Play()
-									elseif not u53 then
-										TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											BackgroundTransparency = 1
-										}):Play()
-									end
-								end
-							elseif not u53 then
-								if not u53 then
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0
-									}):Play()
-								end
-							else
-								u33(30)
-								TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Rotation = 360
-								}):Play()
-								TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									BackgroundTransparency = 0
-								}):Play()
-							end
-
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 1
-							}):Play()
-							TextButton2.Visible = false
-
-							repeat
-								task.wait()
-							until TextButton2.TextTransparency == 1
-
-							TextButton2.Visible = true
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 0
-							}):Play()
-						end)
-					end,
-					CreateButton = function(_, p30, p31)
-						-- upvalues: u10 (ref), Frame5 (ref), TextButton2 (ref), u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref), TextButton (ref), u32 (ref), TweenService (ref)
-						local Frame12 = Instance.new("Frame")
-						local TextButton3 = Instance.new("TextButton")
-						local ImageLabel17 = Instance.new("ImageLabel")
-
-						Frame12.Name = u10(p30) .. "ButtonHolder"
-						Frame12.Parent = Frame5
-						Frame12.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						Frame12.BorderSizePixel = 0
-						Frame12.Size = UDim2.new(0, 170, 0, 30)
-						TextButton3.Name = "Button"
-						TextButton3.Parent = Frame12
-						TextButton3.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						TextButton3.BackgroundTransparency = 1
-						TextButton3.BorderSizePixel = 0
-						TextButton3.Position = UDim2.new(0.052941177, 0, 0, 0)
-						TextButton3.Size = UDim2.new(0, 153, 0, 24)
-						TextButton3.ZIndex = 2
-						TextButton3.AutoButtonColor = false
-						TextButton3.Font = Enum.Font.SourceSansBold
-						TextButton3.Text = p30
-						TextButton3.TextColor3 = Color3.new(1, 1, 1)
-						TextButton3.TextSize = 14
-						ImageLabel17.Name = "ButtonRound"
-						ImageLabel17.Parent = TextButton3
-						ImageLabel17.Active = true
-						ImageLabel17.AnchorPoint = Vector2.new(0.5, 0.5)
-						ImageLabel17.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel17.BackgroundTransparency = 1
-						ImageLabel17.BorderSizePixel = 0
-						ImageLabel17.ClipsDescendants = true
-						ImageLabel17.Position = UDim2.new(0.5, 0, 0.5, 0)
-						ImageLabel17.Selectable = true
-						ImageLabel17.Size = UDim2.new(1, 0, 1, 0)
-						ImageLabel17.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel17.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel17.ScaleType = Enum.ScaleType.Slice
-						ImageLabel17.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel17.SliceScale = 0.04
-						TextButton3.MouseButton1Down:Connect(function()
-							-- upvalues: p31 (ref), TextButton3 (ref)
-							p31(TextButton3)
-						end)
-						TextButton2.MouseButton1Down:Connect(function()
-							-- upvalues: u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref)
-							if u53 then
-								if u53 then
-									u55(30)
-									u34(30)
-								end
-							else
-								u54(30)
-								u33(30)
-							end
-						end)
-						TextButton.MouseButton1Down:Connect(function()
-							-- upvalues: u32 (ref), u53 (ref), u33 (ref), TweenService (ref), TextButton2 (ref), Frame5 (ref), u34 (ref)
-							if not u32 then
-								if not u53 then
-									if not u53 then
-										TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											BackgroundTransparency = 0
-										}):Play()
-									end
-								else
-									u33(30)
-									TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										Rotation = 360
-									}):Play()
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0
-									}):Play()
-								end
-							elseif u32 then
-								if u53 then
-									u34(30)
-									TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										Rotation = 0
-									}):Play()
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 1
-									}):Play()
-								elseif not u53 then
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 1
-									}):Play()
-								end
-							end
-
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 1
-							}):Play()
-							TextButton2.Visible = false
-
-							repeat
-								task.wait()
-							until TextButton2.TextTransparency == 1
-
-							TextButton2.Visible = true
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 0
-							}):Play()
-						end)
-					end,
-					CreateTextbox = function(_, p33, p34)
-						-- upvalues: u10 (ref), Frame5 (ref), TextButton2 (ref), u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref), TextButton (ref), u32 (ref), TweenService (ref)
-						local Frame13 = Instance.new("Frame")
-						local TextBox = Instance.new("TextBox")
-						local ImageLabel18 = Instance.new("ImageLabel")
-
-						Frame13.Name = u10(p33) .. "TextBoxHolder"
-						Frame13.Parent = Frame5
-						Frame13.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						Frame13.BorderSizePixel = 0
-						Frame13.Size = UDim2.new(0, 170, 0, 30)
-						TextBox.Parent = Frame13
-						TextBox.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						TextBox.BackgroundTransparency = 1
-						TextBox.ClipsDescendants = true
-						TextBox.Position = UDim2.new(0.0529999994, 0, 0, 0)
-						TextBox.Size = UDim2.new(0, 153, 0, 24)
-						TextBox.ZIndex = 2
-						TextBox.Font = Enum.Font.SourceSansBold
-						TextBox.PlaceholderText = p33
-						TextBox.Text = ""
-						TextBox.TextColor3 = Color3.new(1, 1, 1)
-						TextBox.TextSize = 14
-						ImageLabel18.Name = "TextBoxRound"
-						ImageLabel18.Parent = TextBox
-						ImageLabel18.Active = true
-						ImageLabel18.AnchorPoint = Vector2.new(0.5, 0.5)
-						ImageLabel18.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel18.BackgroundTransparency = 1
-						ImageLabel18.BorderSizePixel = 0
-						ImageLabel18.ClipsDescendants = true
-						ImageLabel18.Position = UDim2.new(0.5, 0, 0.5, 0)
-						ImageLabel18.Selectable = true
-						ImageLabel18.Size = UDim2.new(1, 0, 1, 0)
-						ImageLabel18.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel18.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel18.ScaleType = Enum.ScaleType.Slice
-						ImageLabel18.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel18.SliceScale = 0.04
-						TextBox.FocusLost:Connect(function(enterPressed)
-							-- upvalues: p34 (ref), TextBox (ref)
-							if enterPressed then
-								p34(TextBox.Text)
-							end
-						end)
-						TextButton2.MouseButton1Down:Connect(function()
-							-- upvalues: u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref)
-							if not u53 then
-								u54(30)
-								u33(30)
-							elseif u53 then
-								u55(30)
-								u34(30)
-							end
-						end)
-						TextButton.MouseButton1Down:Connect(function()
-							-- upvalues: u32 (ref), u53 (ref), u33 (ref), TweenService (ref), TextButton2 (ref), Frame5 (ref), u34 (ref)
-							if not u32 then
-								if u53 then
-									u33(30)
-									TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										Rotation = 360
-									}):Play()
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0
-									}):Play()
-								elseif not u53 then
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0
-									}):Play()
-								end
-							elseif u32 then
-								if u53 then
-									u34(30)
-									TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										Rotation = 0
-									}):Play()
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 1
-									}):Play()
-								elseif not u53 then
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 1
-									}):Play()
-								end
-							end
-
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 1
-							}):Play()
-							TextButton2.Visible = false
-
-							repeat
-								task.wait()
-							until TextButton2.TextTransparency == 1
-
-							TextButton2.Visible = true
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 0
-							}):Play()
-						end)
-					end,
-					CreateDropdown = function(_, p36, p37, p38, p39)
-						-- upvalues: u10 (ref), Frame5 (ref), TweenService (ref), ImageLabel2 (ref), TextButton2 (ref), u53 (ref), u54 (ref), u33 (ref), u55 (ref), u34 (ref), TextButton (ref), u32 (ref)
-						local Frame14 = Instance.new("Frame")
-						local TextLabel11 = Instance.new("TextLabel")
-						local ImageLabel19 = Instance.new("ImageLabel")
-						local TextButton4 = Instance.new("TextButton")
-						local ImageLabel20 = Instance.new("ImageLabel")
-						local ScrollingFrame = Instance.new("ScrollingFrame")
-						local UIListLayout3 = Instance.new("UIListLayout")
-						local v153 = u10(p36)
-						local n6 = 1
-						local v155 = false
-						local u156 = p37[p38]
-						local n7 = 0
-						local n8 = 0
-						local u159 = false
-
-						Frame14.Name = v153 .. "DropdownHolder"
-						Frame14.Parent = Frame5
-						Frame14.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						Frame14.BorderSizePixel = 0
-						Frame14.Size = UDim2.new(0, 170, 0, 30)
-						TextLabel11.Name = "DropdownTitle"
-						TextLabel11.Parent = Frame14
-						TextLabel11.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						TextLabel11.BackgroundTransparency = 1
-						TextLabel11.BorderSizePixel = 0
-						TextLabel11.Position = UDim2.new(0.0529999994, 0, 0, 0)
-						TextLabel11.Size = UDim2.new(0, 153, 0, 24)
-						TextLabel11.ZIndex = 2
-						TextLabel11.Font = Enum.Font.SourceSansBold
-						TextLabel11.Text = u156
-						TextLabel11.TextColor3 = Color3.new(1, 1, 1)
-						TextLabel11.TextSize = 14
-						ImageLabel19.Name = "DropdownRound"
-						ImageLabel19.Parent = TextLabel11
-						ImageLabel19.Active = true
-						ImageLabel19.AnchorPoint = Vector2.new(0.5, 0.5)
-						ImageLabel19.BackgroundColor3 = Color3.new(1, 1, 1)
-						ImageLabel19.BackgroundTransparency = 1
-						ImageLabel19.BorderSizePixel = 0
-						ImageLabel19.ClipsDescendants = true
-						ImageLabel19.Position = UDim2.new(0.5, 0, 0.5, 0)
-						ImageLabel19.Selectable = true
-						ImageLabel19.Size = UDim2.new(1, 0, 1, 0)
-						ImageLabel19.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel19.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
-						ImageLabel19.ScaleType = Enum.ScaleType.Slice
-						ImageLabel19.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel19.SliceScale = 0.04
-						TextButton4.Name = "DropdownToggle"
-						TextButton4.Parent = TextLabel11
-						TextButton4.BackgroundColor3 = Color3.new(1, 1, 1)
-						TextButton4.BackgroundTransparency = 1
-						TextButton4.Position = UDim2.new(0.816928029, 0, 0, 0)
-						TextButton4.Size = UDim2.new(0, 28, 0, 24)
-						TextButton4.AutoButtonColor = false
-						TextButton4.Font = Enum.Font.SourceSansBold
-						TextButton4.Text = ">"
-						TextButton4.TextColor3 = Color3.new(1, 1, 1)
-						TextButton4.TextSize = 15
-						ImageLabel20.Name = "DropdownMain"
-						ImageLabel20.Parent = TextLabel11
-						ImageLabel20.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						ImageLabel20.BackgroundTransparency = 1
-						ImageLabel20.ClipsDescendants = true
-						ImageLabel20.Position = UDim2.new(1.09275186, 0, -0.0336658955, 0)
-						ImageLabel20.Size = UDim2.new(0, 0, 0, n8)
-						ImageLabel20.Image = getAsset("Sprite_Not_For_Roundify")
-						ImageLabel20.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
-						ImageLabel20.ScaleType = Enum.ScaleType.Slice
-						ImageLabel20.SliceCenter = Rect.new(100, 100, 100, 100)
-						ImageLabel20.SliceScale = 0.04
-						ScrollingFrame.Parent = ImageLabel20
-						ScrollingFrame.BackgroundColor3 = Color3.new(1, 1, 1)
-						ScrollingFrame.BackgroundTransparency = 1
-						ScrollingFrame.BorderSizePixel = 0
-						ScrollingFrame.Size = UDim2.new(0, 153, 0, n8)
-						ScrollingFrame.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
-						ScrollingFrame.CanvasSize = UDim2.new(0, 0, n6, 0)
-						ScrollingFrame.ScrollBarThickness = 3
-						ScrollingFrame.TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
-						ScrollingFrame.ScrollingDirection = "Y"
-						UIListLayout3.Name = "ButtonLayout"
-						UIListLayout3.Parent = ScrollingFrame
-						UIListLayout3.SortOrder = Enum.SortOrder.LayoutOrder
-
-						for _, v in pairs(p37) do
-							local TextButton5 = Instance.new("TextButton")
-
-							n7 = n7 + 1
-							TextButton5.Name = u10(v) .. "Button"
-							TextButton5.Parent = ScrollingFrame
-							TextButton5.BackgroundColor3 = Color3.new(0.215686, 0.215686, 0.215686)
-							TextButton5.BackgroundTransparency = 1
-							TextButton5.BorderSizePixel = 0
-							TextButton5.Position = UDim2.new(0, 0, 0, 0)
-							TextButton5.Size = UDim2.new(0, 153, 0, 25)
-							TextButton5.AutoButtonColor = false
-							TextButton5.Font = Enum.Font.SourceSansBold
-							TextButton5.Text = v
-							TextButton5.TextColor3 = Color3.new(1, 1, 1)
-							TextButton5.TextSize = 14
-
-							if not (n7 <= 4) then
-								if n7 >= 4 then
-									v155 = true
-								end
-							else
-								n8 = n8 + 25
-								ImageLabel20.Size = UDim2.new(0, 0, 0, n8)
-							end
-
-							if v155 then
-								n6 = n6 + 0.25
-								ScrollingFrame.CanvasSize = UDim2.new(0, 0, n6, 0)
-							end
-
-							TextButton5.InputBegan:Connect(function(input)
-								-- upvalues: TweenService (ref), TextButton5 (ref)
-								if input.UserInputType == Enum.UserInputType.MouseMovement then
-									TweenService:Create(TextButton5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0.5
-									}):Play()
-								end
-							end)
-							TextButton5.InputEnded:Connect(function(input)
-								-- upvalues: TweenService (ref), TextButton5 (ref)
-								if input.UserInputType == Enum.UserInputType.MouseMovement then
-									TweenService:Create(TextButton5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 1
-									}):Play()
-								end
-							end)
-							TextButton5.MouseButton1Down:Connect(function()
-								-- upvalues: u156 (ref), v (ref), p39 (ref), u159 (ref), TextButton4 (ref), TweenService (ref), TextLabel11 (ref), ScrollingFrame (ref), n8 (ref), ImageLabel20 (ref)
-								u156 = v
-								p39(v)
-								u159 = false
-								TextButton4.Text = ">"
-								TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Rotation = 0
-								}):Play()
-								TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									TextColor3 = Color3.new(1, 1, 1)
-								}):Play()
-								TextLabel11.Text = u156
-								TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									ScrollBarImageTransparency = 1
-								}):Play()
-								TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 0, 0, n8)
-								}):Play()
-								TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 0, 0, n8)
-								}):Play()
-							end)
-						end
-
-						TextButton4.MouseButton1Down:Connect(function()
-							-- upvalues: u159 (ref), TextButton4 (ref), TweenService (ref), TextLabel11 (ref), u156 (ref), ScrollingFrame (ref), n8 (ref), ImageLabel20 (ref), ImageLabel2 (ref), Frame5 (ref), p36 (ref)
-							if u159 then
-								u159 = false
-								TextButton4.Text = ">"
-								TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Rotation = 0
-								}):Play()
-								TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									TextColor3 = Color3.new(1, 1, 1)
-								}):Play()
-								TextLabel11.Text = u156
-								TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									ScrollBarImageTransparency = 1
-								}):Play()
-								TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 0, 0, n8)
-								}):Play()
-								TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 0, 0, n8)
-								}):Play()
-							elseif not u159 then
-								ImageLabel2.ClipsDescendants = false
-								Frame5.ClipsDescendants = false
-								u159 = true
-								TextButton4.Text = "<"
-								TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Rotation = -360
-								}):Play()
-								TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									TextColor3 = Color3.new(0.698039, 0.698039, 0.698039)
-								}):Play()
-								TextLabel11.Text = p36
-								TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									ScrollBarImageTransparency = 0
-								}):Play()
-								TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 153, 0, n8)
-								}):Play()
-								TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 153, 0, n8)
-								}):Play()
-							end
-						end)
-						TextButton2.MouseButton1Down:Connect(function()
-							-- upvalues: u53 (ref), u54 (ref), u33 (ref), u159 (ref), TextButton4 (ref), TweenService (ref), TextLabel11 (ref), u156 (ref), ScrollingFrame (ref), ImageLabel20 (ref), n8 (ref), ImageLabel2 (ref), Frame5 (ref), u55 (ref), u34 (ref)
-							if not u53 then
-								u54(30)
-								u33(30)
-							elseif u53 then
-								u159 = false
-								TextButton4.Text = ">"
-								TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Rotation = 0
-								}):Play()
-								TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									TextColor3 = Color3.new(1, 1, 1)
-								}):Play()
-								TextLabel11.Text = u156
-								TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									ScrollBarImageTransparency = 1
-								}):Play()
-								TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 0, 0, 0)
-								}):Play()
-								TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Size = UDim2.new(0, 0, 0, n8)
-								}):Play()
-								ImageLabel2.ClipsDescendants = true
-								Frame5.ClipsDescendants = true
-								u55(30)
-								u34(30)
-							end
-						end)
-						TextButton.MouseButton1Down:Connect(function()
-							-- upvalues: u159 (ref), TextButton4 (ref), TweenService (ref), TextLabel11 (ref), u156 (ref), ScrollingFrame (ref), n8 (ref), ImageLabel20 (ref), ImageLabel2 (ref), Frame5 (ref), u32 (ref), u53 (ref), u33 (ref), TextButton2 (ref), u34 (ref)
-							u159 = false
-							TextButton4.Text = ">"
-							TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								Rotation = 0
-							}):Play()
-							TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextColor3 = Color3.new(1, 1, 1)
-							}):Play()
-							TextLabel11.Text = u156
-							TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								ScrollBarImageTransparency = 1
-							}):Play()
-							TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								Size = UDim2.new(0, 0, 0, n8)
-							}):Play()
-							TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								Size = UDim2.new(0, 0, 0, n8)
-							}):Play()
-							ImageLabel2.ClipsDescendants = true
-							Frame5.ClipsDescendants = true
-
-							if u32 then
-								if u32 then
-									if u53 then
-										u34(30)
-										TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											Rotation = 0
-										}):Play()
-										TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											BackgroundTransparency = 1
-										}):Play()
-									elseif not u53 then
-										TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-											BackgroundTransparency = 1
-										}):Play()
-									end
-								end
-							elseif not u53 then
-								if not u53 then
-									TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0
-									}):Play()
-								end
-							else
-								u33(30)
-								TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									Rotation = -360
-								}):Play()
-								TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-									BackgroundTransparency = 0
-								}):Play()
-							end
-
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 1
-							}):Play()
-							TextButton2.Visible = false
-
-							repeat
-								task.wait()
-							until TextButton2.TextTransparency == 1
-
-							TextButton2.Visible = true
-							TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-								TextTransparency = 0
-							}):Play()
-						end)
-					end
-				}
-			end
-		}
-	end
+    NewWindow = function(_, p5)
+        local ImageLabel, Frame2, TextButton, TextLabel, Frame3, ImageLabel2, UIListLayout, Frame4, v30 = Instance.new'ImageLabel', Instance.new'Frame', Instance.new'TextButton', Instance.new'TextLabel', Instance.new'Frame', Instance.new'ImageLabel', Instance.new'UIListLayout', Instance.new'Frame', u10(p5)
+
+        n3 = n3 + 2
+
+        local n4, u32 = 35, true
+
+        local function u33(p6)
+            n4 = n4 + p6
+
+            TweenService:Create(ImageLabel2, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 170, 0, n4),
+            }):Play()
+        end
+        local function u34(p7)
+            n4 = n4 - p7
+
+            TweenService:Create(ImageLabel2, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 170, 0, n4),
+            }):Play()
+        end
+
+        ImageLabel.Name = v30 .. 'Window'
+        ImageLabel.Parent = Frame
+        ImageLabel.BackgroundColor3 = Color3.new(0.0980392, 0.0980392, 0.0980392)
+        ImageLabel.BackgroundTransparency = 1
+        ImageLabel.Position = UDim2.new(n3, -100, 3, -265)
+        ImageLabel.Size = UDim2.new(0, 170, 0, 30)
+        ImageLabel.ZIndex = 2
+        ImageLabel.Image = getAsset'Sprite_Not_For_Roundify'
+        ImageLabel.ImageColor3 = Color3.new(0.0980392, 0.0980392, 0.0980392)
+        ImageLabel.ScaleType = Enum.ScaleType.Slice
+        ImageLabel.SliceCenter = Rect.new(100, 100, 100, 100)
+        ImageLabel.SliceScale = 0.05
+        Frame2.Name = 'Topbar'
+        Frame2.Parent = ImageLabel
+        Frame2.BackgroundColor3 = Color3.new(1, 1, 1)
+        Frame2.BackgroundTransparency = 1
+        Frame2.BorderSizePixel = 0
+        Frame2.Size = UDim2.new(0, 170, 0, 30)
+        Frame2.ZIndex = 2
+        TextButton.Name = 'WindowToggle'
+        TextButton.Parent = Frame2
+        TextButton.BackgroundColor3 = Color3.new(1, 1, 1)
+        TextButton.BackgroundTransparency = 1
+        TextButton.Position = UDim2.new(0.822450161, 0, 0, 0)
+        TextButton.Size = UDim2.new(0, 30, 0, 30)
+        TextButton.ZIndex = 2
+        TextButton.Font = Enum.Font.SourceSansSemibold
+        TextButton.Text = '-'
+        TextButton.TextColor3 = Color3.new(1, 1, 1)
+        TextButton.TextSize = 20
+        TextButton.TextWrapped = true
+
+        TextButton.MouseButton1Down:Connect(function()
+            if not u32 then
+                u32 = true
+
+                TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                TextButton.Text = '-'
+                TextButton.TextSize = 20
+                TextButton.Visible = false
+
+                repeat
+                    task.wait()
+                until TextButton.TextTransparency == 1
+
+                TextButton.Visible = true
+
+                TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+            elseif u32 then
+                u32 = false
+
+                TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                TextButton.Text = 'v'
+                TextButton.TextSize = 14
+                TextButton.Visible = false
+
+                repeat
+                    task.wait()
+                until TextButton.TextTransparency == 1
+
+                TextButton.Visible = true
+
+                TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+            end
+        end)
+
+        TextLabel.Name = 'WindowTitle'
+        TextLabel.Parent = Frame2
+        TextLabel.BackgroundColor3 = Color3.new(1, 1, 1)
+        TextLabel.BackgroundTransparency = 1
+        TextLabel.Size = UDim2.new(0, 170, 0, 30)
+        TextLabel.ZIndex = 2
+        TextLabel.Font = Enum.Font.SourceSansBold
+        TextLabel.Text = p5
+        TextLabel.TextColor3 = Color3.new(1, 1, 1)
+        TextLabel.TextSize = 17
+        Frame3.Name = 'BottomRoundCover'
+        Frame3.Parent = Frame2
+        Frame3.BackgroundColor3 = Color3.new(0.0980392, 0.0980392, 0.0980392)
+        Frame3.BorderSizePixel = 0
+        Frame3.Position = UDim2.new(0, 0, 0.833333313, 0)
+        Frame3.Size = UDim2.new(0, 170, 0, 5)
+        Frame3.ZIndex = 2
+        ImageLabel2.Name = 'Body'
+        ImageLabel2.Parent = ImageLabel
+        ImageLabel2.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+        ImageLabel2.BackgroundTransparency = 1
+        ImageLabel2.ClipsDescendants = true
+        ImageLabel2.Size = UDim2.new(0, 170, 0, n4)
+        ImageLabel2.Image = getAsset'Sprite_Not_For_Roundify'
+        ImageLabel2.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+        ImageLabel2.ScaleType = Enum.ScaleType.Slice
+        ImageLabel2.SliceCenter = Rect.new(100, 100, 100, 100)
+        ImageLabel2.SliceScale = 0.05
+        UIListLayout.Name = 'Sorter'
+        UIListLayout.Parent = ImageLabel2
+        UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        Frame4.Name = 'TopbarBodyCover'
+        Frame4.Parent = ImageLabel2
+        Frame4.BackgroundColor3 = Color3.new(1, 1, 1)
+        Frame4.BackgroundTransparency = 1
+        Frame4.BorderSizePixel = 0
+        Frame4.Size = UDim2.new(0, 170, 0, 30)
+
+        Dragging(ImageLabel)
+
+        return {
+            NewSection = function(_, p9)
+                local Frame5, Frame6, TextButton2, TextLabel2, UIListLayout2, v50, s1, n5, u53 = Instance.new'Frame', Instance.new'Frame', Instance.new'TextButton', Instance.new'TextLabel', Instance.new'UIListLayout', u10(p9), 'v', 30, false
+
+                local function u54(p10)
+                    n5 = n5 + p10
+
+                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                        Size = UDim2.new(0, 170, 0, n5),
+                    }):Play()
+                end
+                local function u55(p11)
+                    n5 = n5 - p11
+
+                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                        Size = UDim2.new(0, 170, 0, n5),
+                    }):Play()
+                end
+
+                Frame5.Name = v50 .. 'Section'
+                Frame5.Parent = ImageLabel2
+                Frame5.BackgroundColor3 = Color3.new(0.176471, 0.176471, 0.176471)
+                Frame5.BorderSizePixel = 0
+                Frame5.ClipsDescendants = true
+                Frame5.Size = UDim2.new(0, 170, 0, n5)
+
+                u33(30)
+
+                Frame6.Name = 'SectionInfo'
+                Frame6.Parent = Frame5
+                Frame6.BackgroundColor3 = Color3.new(1, 1, 1)
+                Frame6.BackgroundTransparency = 1
+                Frame6.Size = UDim2.new(0, 170, 0, 30)
+                TextButton2.Name = 'SectionToggle'
+                TextButton2.Parent = Frame6
+                TextButton2.BackgroundColor3 = Color3.new(1, 1, 1)
+                TextButton2.BackgroundTransparency = 1
+                TextButton2.Position = UDim2.new(0.822450161, 0, 0, 0)
+                TextButton2.Size = UDim2.new(0, 30, 0, 30)
+                TextButton2.ZIndex = 2
+                TextButton2.Font = Enum.Font.SourceSansSemibold
+                TextButton2.Text = s1
+                TextButton2.TextColor3 = Color3.new(1, 1, 1)
+                TextButton2.TextSize = 14
+                TextButton2.TextWrapped = true
+                TextLabel2.Name = 'SectionTitle'
+                TextLabel2.Parent = Frame6
+                TextLabel2.BackgroundColor3 = Color3.new(1, 1, 1)
+                TextLabel2.BackgroundTransparency = 1
+                TextLabel2.BorderSizePixel = 0
+                TextLabel2.Position = UDim2.new(0.052941177, 0, 0, 0)
+                TextLabel2.Size = UDim2.new(0, 125, 0, 30)
+                TextLabel2.Font = Enum.Font.SourceSansBold
+                TextLabel2.Text = p9
+                TextLabel2.TextColor3 = Color3.new(1, 1, 1)
+                TextLabel2.TextSize = 17
+                TextLabel2.TextXAlignment = Enum.TextXAlignment.Left
+                UIListLayout2.Name = 'Layout'
+                UIListLayout2.Parent = Frame5
+                UIListLayout2.SortOrder = Enum.SortOrder.LayoutOrder
+
+                TextButton.MouseButton1Down:Connect(function()
+                    if not u32 then
+                        u33(30)
+
+                        TextButton2.Text = s1
+
+                        TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                    elseif u32 then
+                        u34(30)
+
+                        TextButton2.Text = ''
+
+                        TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                    end
+                end)
+                TextButton2.MouseButton1Down:Connect(function()
+                    if not u53 then
+                        u53 = true
+                        s1 = '-'
+
+                        TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+                        TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                        TextButton2.Text = s1
+                        TextButton2.TextSize = 20
+                        TextButton2.Visible = false
+                        TextButton.Visible = false
+
+                        repeat
+                            task.wait()
+                        until TextButton2.TextTransparency == 1 and TextButton.TextTransparency == 1
+
+                        TextButton2.Visible = true
+                        TextButton.Visible = true
+
+                        TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                        TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                    elseif u53 then
+                        u53 = false
+                        s1 = 'v'
+
+                        TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+                        TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                        TextButton2.Text = s1
+                        TextButton2.TextSize = 14
+                        TextButton2.Visible = false
+                        TextButton.Visible = false
+
+                        repeat
+                            task.wait()
+                        until TextButton2.TextTransparency == 1 and TextButton.TextTransparency == 1
+
+                        TextButton2.Visible = true
+                        TextButton.Visible = true
+
+                        TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                        TweenService:Create(TextButton, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                    end
+                end)
+
+                return {
+                    CreateToggle = function(_, p13, p14)
+                        local Frame7, TextLabel3, ImageLabel3, ImageButton, v66, u67 = Instance.new'Frame', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'ImageButton', u10(p13), false
+
+                        Frame7.Name = v66 .. 'ToggleHolder'
+                        Frame7.Parent = Frame5
+                        Frame7.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        Frame7.BorderSizePixel = 0
+                        Frame7.Size = UDim2.new(0, 170, 0, 30)
+                        TextLabel3.Name = 'ToggleTitle'
+                        TextLabel3.Parent = Frame7
+                        TextLabel3.BackgroundColor3 = Color3.new(1, 1, 1)
+                        TextLabel3.BackgroundTransparency = 1
+                        TextLabel3.BorderSizePixel = 0
+                        TextLabel3.Position = UDim2.new(0.052941177, 0, 0, 0)
+                        TextLabel3.Size = UDim2.new(0, 125, 0, 30)
+                        TextLabel3.Font = Enum.Font.SourceSansBold
+                        TextLabel3.Text = p13
+                        TextLabel3.TextColor3 = Color3.new(1, 1, 1)
+                        TextLabel3.TextSize = 17
+                        TextLabel3.TextXAlignment = Enum.TextXAlignment.Left
+                        ImageLabel3.Name = 'ToggleBackground'
+                        ImageLabel3.Parent = Frame7
+                        ImageLabel3.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel3.BackgroundTransparency = 1
+                        ImageLabel3.BorderSizePixel = 0
+                        ImageLabel3.Position = UDim2.new(0.847058833, 0, 0.166666672, 0)
+                        ImageLabel3.Size = UDim2.new(0, 20, 0, 20)
+                        ImageLabel3.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel3.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageButton.Name = 'ToggleButton'
+                        ImageButton.Parent = ImageLabel3
+                        ImageButton.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageButton.BackgroundTransparency = 1
+                        ImageButton.Position = UDim2.new(0, 2, 0, 2)
+                        ImageButton.Size = UDim2.new(0, 16, 0, 16)
+                        ImageButton.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageButton.ImageColor3 = Color3.new(1, 0.341176, 0.341176)
+                        ImageButton.ImageTransparency = 1
+
+                        ImageButton.MouseButton1Down:Connect(function()
+                            u67 = not u67
+
+                            if not u67 then
+                                if not u67 then
+                                    TweenService:Create(ImageButton, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                                end
+                            else
+                                TweenService:Create(ImageButton, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
+                            end
+
+                            p14(u67)
+                        end)
+                        TextButton2.MouseButton1Down:Connect(function()
+                            if u53 then
+                                if u53 then
+                                    u55(30)
+                                    u34(30)
+                                end
+                            else
+                                u54(30)
+                                u33(30)
+                            end
+                        end)
+                        TextButton.MouseButton1Down:Connect(function()
+                            if u32 then
+                                if u32 then
+                                    if not u53 then
+                                        if not u53 then
+                                            TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                        end
+                                    else
+                                        u34(30)
+                                        TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                                        TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                    end
+                                end
+                            elseif not u53 then
+                                if not u53 then
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                                end
+                            else
+                                u33(30)
+                                TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 360}):Play()
+                                TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                            end
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                            TextButton2.Visible = false
+
+                            repeat
+                                task.wait()
+                            until TextButton2.TextTransparency == 1
+
+                            TextButton2.Visible = true
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                        end)
+                    end,
+                    CreateSlider = function(_, p16, p17, p18, p19, p20, p21)
+                        local Frame8, TextLabel4, ImageLabel4, TextLabel5, ImageLabel5, ImageLabel6, v84, u85, u86 = Instance.new'Frame', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'ImageLabel', u10(p16), false, p20
+
+                        Frame8.Name = v84 .. 'SliderHolder'
+                        Frame8.Parent = Frame5
+                        Frame8.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        Frame8.BorderSizePixel = 0
+                        Frame8.Size = UDim2.new(0, 170, 0, 30)
+                        TextLabel4.Name = 'SliderTitle'
+                        TextLabel4.Parent = Frame8
+                        TextLabel4.BackgroundColor3 = Color3.new(1, 1, 1)
+                        TextLabel4.BackgroundTransparency = 1
+                        TextLabel4.BorderSizePixel = 0
+                        TextLabel4.Position = UDim2.new(0.052941177, 0, 0, 0)
+                        TextLabel4.Size = UDim2.new(0, 125, 0, 15)
+                        TextLabel4.Font = Enum.Font.SourceSansSemibold
+                        TextLabel4.Text = p16
+                        TextLabel4.TextColor3 = Color3.new(1, 1, 1)
+                        TextLabel4.TextSize = 17
+                        TextLabel4.TextXAlignment = Enum.TextXAlignment.Left
+                        ImageLabel4.Name = 'SliderValueHolder'
+                        ImageLabel4.Parent = Frame8
+                        ImageLabel4.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel4.BackgroundTransparency = 1
+                        ImageLabel4.Position = UDim2.new(0.747058809, 0, 0, 0)
+                        ImageLabel4.Size = UDim2.new(0, 35, 0, 15)
+                        ImageLabel4.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel4.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel4.ImageTransparency = 0.5
+                        ImageLabel4.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel4.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel4.SliceScale = 0.02
+                        TextLabel5.Name = 'SliderValue'
+                        TextLabel5.Parent = ImageLabel4
+                        TextLabel5.BackgroundColor3 = Color3.new(1, 1, 1)
+                        TextLabel5.BackgroundTransparency = 1
+                        TextLabel5.Size = UDim2.new(0, 35, 0, 15)
+                        TextLabel5.Font = Enum.Font.SourceSansSemibold
+                        TextLabel5.Text = tostring(p19 or u86 and tonumber(string.format('%.2f', p19)))
+                        TextLabel5.TextColor3 = Color3.new(1, 1, 1)
+                        TextLabel5.TextSize = 14
+                        ImageLabel5.Name = 'SliderBackground'
+                        ImageLabel5.Parent = Frame8
+                        ImageLabel5.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel5.BackgroundTransparency = 1
+                        ImageLabel5.Position = UDim2.new(0.0529999994, 0, 0.649999976, 0)
+                        ImageLabel5.Selectable = true
+                        ImageLabel5.Size = UDim2.new(0, 153, 0, 5)
+                        ImageLabel5.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel5.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel5.ImageTransparency = 0.5
+                        ImageLabel5.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel5.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel5.ClipsDescendants = true
+                        ImageLabel5.SliceScale = 0.02
+                        ImageLabel6.Name = 'Slider'
+                        ImageLabel6.Parent = ImageLabel5
+                        ImageLabel6.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel6.BackgroundTransparency = 1
+                        ImageLabel6.Size = UDim2.new(((p19 or p17) - p17) / (p18 - p17), 0, 0, 5)
+                        ImageLabel6.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel6.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel6.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel6.SliceScale = 0.02
+
+                        local function u87(p22)
+                            local uDim2 = UDim2.new(math.clamp((p22.Position.X - ImageLabel5.AbsolutePosition.X) / ImageLabel5.AbsoluteSize.X, 0, 1), 0, 1.15, 0)
+
+                            TweenService:Create(ImageLabel6, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = uDim2}):Play()
+
+                            local v165, v166 = math.floor(uDim2.X.Scale * p18 / p18 * (p18 - p17) + p17), uDim2.X.Scale * p18 / p18 * (p18 - p17) + p17
+                            local v167 = u86 and v166 or v165
+                            local num = tonumber(string.format('%.2f', v167))
+
+                            TextLabel5.Text = tostring(num)
+
+                            p21(num)
+                        end
+
+                        ImageLabel5.InputBegan:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                                u85 = true
+                            end
+                        end)
+                        ImageLabel5.InputEnded:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                                u85 = false
+                            end
+                        end)
+                        ImageLabel5.InputBegan:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                                u87(input)
+                            end
+                        end)
+                        UserInputService.InputChanged:Connect(function(input)
+                            if u85 and input.UserInputType == Enum.UserInputType.MouseMovement then
+                                u87(input)
+                            end
+                        end)
+                        TextButton2.MouseButton1Down:Connect(function()
+                            if not u53 then
+                                u54(30)
+                                u33(30)
+                            elseif u53 then
+                                u55(30)
+                                u34(30)
+                            end
+                        end)
+                        TextButton.MouseButton1Down:Connect(function()
+                            if not u32 then
+                                if u53 then
+                                    u33(30)
+                                    TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 360}):Play()
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                                elseif not u53 then
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                                end
+                            elseif u32 then
+                                if not u53 then
+                                    if not u53 then
+                                        TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                    end
+                                else
+                                    u34(30)
+                                    TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                end
+                            end
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                            TextButton2.Visible = false
+
+                            repeat
+                                task.wait()
+                            until TextButton2.TextTransparency == 1
+
+                            TextButton2.Visible = true
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                        end)
+                    end,
+                    CreateColorPicker = function(_, p24, p25, p26)
+                        local Frame9, Frame10, TextLabel6, ImageLabel7, ImageButton, TextLabel7, ImageButton2, ImageLabel8, TextLabel8, ImageLabel9, TextLabel9, ImageLabel10, TextLabel10, ImageLabel11, ImageLabel12, ImageLabel13, Frame11, ImageLabel14, ImageLabel15, ImageLabel16, v113 = Instance.new'Frame', Instance.new'Frame', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'ImageButton', Instance.new'TextLabel', Instance.new'ImageButton', Instance.new'ImageLabel', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'ImageLabel', Instance.new'ImageLabel', Instance.new'Frame', Instance.new'ImageLabel', Instance.new'ImageLabel', Instance.new'ImageLabel', u10(p24)
+
+                        n2 = n2 + 1
+
+                        local u114, u115, color3, color3_2 = false, false, nil, nil
+
+                        Frame9.Name = v113 .. 'ColorPickerHolder'
+                        Frame9.Parent = Frame5
+                        Frame9.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        Frame9.BorderSizePixel = 0
+                        Frame9.Size = UDim2.new(0, 170, 0, 30)
+                        TextLabel7.Name = 'ColorPickerTitle'
+                        TextLabel7.Parent = Frame9
+                        TextLabel7.BackgroundColor3 = Color3.new(1, 1, 1)
+                        TextLabel7.BackgroundTransparency = 1
+                        TextLabel7.BorderSizePixel = 0
+                        TextLabel7.Position = UDim2.new(0.052941177, 0, 0, 0)
+                        TextLabel7.Size = UDim2.new(0, 125, 0, 30)
+                        TextLabel7.Font = Enum.Font.SourceSansBold
+                        TextLabel7.Text = p24
+                        TextLabel7.TextColor3 = Color3.new(1, 1, 1)
+                        TextLabel7.TextSize = 17
+                        TextLabel7.TextXAlignment = Enum.TextXAlignment.Left
+                        ImageButton2.Name = 'ColorPickerToggle'
+                        ImageButton2.Parent = Frame9
+                        ImageButton2.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageButton2.BackgroundTransparency = 1
+                        ImageButton2.Position = UDim2.new(0.822000027, 0, 0.166999996, 0)
+                        ImageButton2.Size = UDim2.new(0, 22, 0, 20)
+                        ImageButton2.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageButton2.ImageColor3 = p25
+                        ImageButton2.ScaleType = Enum.ScaleType.Slice
+                        ImageButton2.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageButton2.SliceScale = 0.04
+                        ImageLabel8.Name = 'ColorPickerMain'
+                        ImageLabel8.Parent = Frame9
+                        ImageLabel8.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        ImageLabel8.BackgroundTransparency = 1
+                        ImageLabel8.ClipsDescendants = true
+                        ImageLabel8.BorderSizePixel = 0
+                        ImageLabel8.Position = UDim2.new(1.04705882, 0, -1.36666667, 0)
+                        ImageLabel8.Size = UDim2.new(0, 0, 0, 175)
+                        ImageLabel8.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel8.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        ImageLabel8.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel8.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel8.SliceScale = 0.05
+                        ImageLabel8.ZIndex = 1 + n2
+                        Frame10.Name = 'RainbowToggleHolder'
+                        Frame10.Parent = ImageLabel8
+                        Frame10.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        Frame10.BackgroundTransparency = 1
+                        Frame10.BorderSizePixel = 0
+                        Frame10.Position = UDim2.new(0, 0, 0.819999993, 0)
+                        Frame10.Size = UDim2.new(0, 170, 0, 30)
+                        Frame10.ZIndex = 1 + n2
+                        TextLabel6.Name = 'RainbowTitle'
+                        TextLabel6.Parent = Frame10
+                        TextLabel6.BackgroundColor3 = Color3.new(1, 1, 1)
+                        TextLabel6.BackgroundTransparency = 1
+                        TextLabel6.BorderSizePixel = 0
+                        TextLabel6.Position = UDim2.new(0.052941177, 0, 0, 0)
+                        TextLabel6.Size = UDim2.new(0, 125, 0, 30)
+                        TextLabel6.Font = Enum.Font.SourceSansBold
+                        TextLabel6.Text = 'Rainbow'
+                        TextLabel6.TextColor3 = Color3.new(1, 1, 1)
+                        TextLabel6.TextSize = 17
+                        TextLabel6.TextXAlignment = Enum.TextXAlignment.Left
+                        TextLabel6.ZIndex = 1 + n2
+                        ImageLabel7.Name = 'RainbowBackground'
+                        ImageLabel7.Parent = Frame10
+                        ImageLabel7.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel7.BackgroundTransparency = 1
+                        ImageLabel7.BorderSizePixel = 0
+                        ImageLabel7.Position = UDim2.new(0.847058833, 0, 0.166666672, 0)
+                        ImageLabel7.Size = UDim2.new(0, 20, 0, 20)
+                        ImageLabel7.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel7.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel7.ZIndex = 1 + n2
+                        ImageButton.Name = 'RainbowToggleButton'
+                        ImageButton.Parent = ImageLabel7
+                        ImageButton.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageButton.BackgroundTransparency = 1
+                        ImageButton.Position = UDim2.new(0, 2, 0, 2)
+                        ImageButton.Size = UDim2.new(0, 16, 0, 16)
+                        ImageButton.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageButton.ImageColor3 = Color3.new(1, 0.341176, 0.341176)
+                        ImageButton.ImageTransparency = 1
+                        ImageButton.ZIndex = 1 + n2
+                        TextLabel8.Name = 'ColorValueR'
+                        TextLabel8.Parent = ImageLabel8
+                        TextLabel8.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        TextLabel8.BackgroundTransparency = 1
+                        TextLabel8.BorderSizePixel = 0
+                        TextLabel8.ClipsDescendants = true
+                        TextLabel8.Position = UDim2.new(0, 7, 0, 127)
+                        TextLabel8.Size = UDim2.new(0, 50, 0, 16)
+                        TextLabel8.ZIndex = 2 + n2
+                        TextLabel8.Font = Enum.Font.SourceSansBold
+                        TextLabel8.Text = 'R: 000'
+                        TextLabel8.TextColor3 = Color3.new(1, 1, 1)
+                        TextLabel8.TextSize = 14
+                        ImageLabel9.Name = 'ColorValueRRound'
+                        ImageLabel9.Parent = TextLabel8
+                        ImageLabel9.Active = true
+                        ImageLabel9.AnchorPoint = Vector2.new(0.5, 0.5)
+                        ImageLabel9.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel9.BackgroundTransparency = 1
+                        ImageLabel9.Position = UDim2.new(0.5, 0, 0.5, 0)
+                        ImageLabel9.Selectable = true
+                        ImageLabel9.Size = UDim2.new(1, 0, 1, 0)
+                        ImageLabel9.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel9.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel9.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel9.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel9.SliceScale = 0.04
+                        ImageLabel9.ZIndex = 1 + n2
+                        TextLabel10.Name = 'ColorValueG'
+                        TextLabel10.Parent = ImageLabel8
+                        TextLabel10.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        TextLabel10.BackgroundTransparency = 1
+                        TextLabel10.BorderSizePixel = 0
+                        TextLabel10.ClipsDescendants = true
+                        TextLabel10.Position = UDim2.new(0, 60, 0, 127)
+                        TextLabel10.Size = UDim2.new(0, 51, 0, 16)
+                        TextLabel10.ZIndex = 2 + n2
+                        TextLabel10.Font = Enum.Font.SourceSansBold
+                        TextLabel10.Text = 'G: 000'
+                        TextLabel10.TextColor3 = Color3.new(1, 1, 1)
+                        TextLabel10.TextSize = 14
+                        ImageLabel11.Name = 'ColorValueGRound'
+                        ImageLabel11.Parent = TextLabel10
+                        ImageLabel11.Active = true
+                        ImageLabel11.AnchorPoint = Vector2.new(0.5, 0.5)
+                        ImageLabel11.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel11.BackgroundTransparency = 1
+                        ImageLabel11.Position = UDim2.new(0.5, 0, 0.5, 0)
+                        ImageLabel11.Selectable = true
+                        ImageLabel11.Size = UDim2.new(1, 0, 1, 0)
+                        ImageLabel11.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel11.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel11.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel11.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel11.SliceScale = 0.04
+                        ImageLabel11.ZIndex = 1 + n2
+                        TextLabel9.Name = 'ColorValueB'
+                        TextLabel9.Parent = ImageLabel8
+                        TextLabel9.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        TextLabel9.BackgroundTransparency = 1
+                        TextLabel9.BorderSizePixel = 0
+                        TextLabel9.ClipsDescendants = true
+                        TextLabel9.Position = UDim2.new(0, 114, 0, 127)
+                        TextLabel9.Size = UDim2.new(0, 50, 0, 16)
+                        TextLabel9.ZIndex = 2 + n2
+                        TextLabel9.Font = Enum.Font.SourceSansBold
+                        TextLabel9.Text = 'B: 000'
+                        TextLabel9.TextColor3 = Color3.new(1, 1, 1)
+                        TextLabel9.TextSize = 14
+                        ImageLabel10.Name = 'ColorValueBRound'
+                        ImageLabel10.Parent = TextLabel9
+                        ImageLabel10.Active = true
+                        ImageLabel10.AnchorPoint = Vector2.new(0.5, 0.5)
+                        ImageLabel10.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel10.BackgroundTransparency = 1
+                        ImageLabel10.Position = UDim2.new(0.5, 0, 0.5, 0)
+                        ImageLabel10.Selectable = true
+                        ImageLabel10.Size = UDim2.new(1, 0, 1, 0)
+                        ImageLabel10.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel10.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel10.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel10.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel10.SliceScale = 0.04
+                        ImageLabel10.ZIndex = 1 + n2
+                        ImageLabel12.Name = 'RoundHueHolder'
+                        ImageLabel12.Parent = ImageLabel8
+                        ImageLabel12.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel12.BackgroundTransparency = 1
+                        ImageLabel12.ClipsDescendants = true
+                        ImageLabel12.Position = UDim2.new(0, 136, 0, 6)
+                        ImageLabel12.Size = UDim2.new(0, 28, 0, 114)
+                        ImageLabel12.ZIndex = 2 + n2
+                        ImageLabel12.Image = getAsset'Images_Subtraction_1'
+                        ImageLabel12.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        ImageLabel12.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel12.SliceCenter = Rect.new(128, 128, 128, 128)
+                        ImageLabel12.SliceScale = 0.05
+                        ImageLabel13.Name = 'ColorHue'
+                        ImageLabel13.Parent = ImageLabel12
+                        ImageLabel13.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel13.BackgroundTransparency = 1
+                        ImageLabel13.BorderSizePixel = 0
+                        ImageLabel13.Size = UDim2.new(0, 28, 0, 114)
+                        ImageLabel13.Image = 'http://www.roblox.com/asset/?id=4801885250'
+                        ImageLabel13.ScaleType = Enum.ScaleType.Crop
+                        ImageLabel13.ZIndex = 1 + n2
+                        Frame11.Name = 'HueMarker'
+                        Frame11.Parent = ImageLabel12
+                        Frame11.BackgroundColor3 = Color3.new(0.294118, 0.294118, 0.294118)
+                        Frame11.BorderSizePixel = 0
+                        Frame11.Position = UDim2.new(-0.25, 0, 0, 0)
+                        Frame11.Size = UDim2.new(0, 42, 0, 5)
+                        Frame11.ZIndex = 1 + n2
+                        ImageLabel14.Name = 'RoundSaturationHolder'
+                        ImageLabel14.Parent = ImageLabel8
+                        ImageLabel14.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel14.BackgroundTransparency = 1
+                        ImageLabel14.ClipsDescendants = true
+                        ImageLabel14.Position = UDim2.new(0, 7, 0, 6)
+                        ImageLabel14.Size = UDim2.new(0, 122, 0, 114)
+                        ImageLabel14.ZIndex = 2 + n2
+                        ImageLabel14.Image = getAsset'Images_Subtraction_1'
+                        ImageLabel14.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        ImageLabel14.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel14.SliceCenter = Rect.new(128, 128, 128, 128)
+                        ImageLabel14.SliceScale = 0.05
+                        ImageLabel15.Name = 'ColorSelector'
+                        ImageLabel15.Parent = ImageLabel14
+                        ImageLabel15.BackgroundColor3 = p25
+                        ImageLabel15.BorderSizePixel = 0
+                        ImageLabel15.Size = UDim2.new(0, 122, 0, 114)
+                        ImageLabel15.Image = getAsset'Saturation_Value'
+                        ImageLabel15.ZIndex = 1 + n2
+                        ImageLabel16.Name = 'SaturationMarker'
+                        ImageLabel16.Parent = ImageLabel14
+                        ImageLabel16.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel16.BackgroundTransparency = 1
+                        ImageLabel16.Size = UDim2.new(0, 0, 0, 0)
+                        ImageLabel16.Image = 'http://www.roblox.com/asset/?id=4805639000'
+                        ImageLabel16.ZIndex = 1 + n2
+
+                        local function u118()
+                            local v173, v174, v175 = ImageButton2.ImageColor3.r * 255, ImageButton2.ImageColor3.g * 255, ImageButton2.ImageColor3.b * 255
+
+                            TextLabel8.Text = 'R: ' .. math.floor(v173)
+                            TextLabel10.Text = 'G: ' .. math.floor(v174)
+                            TextLabel9.Text = 'B: ' .. math.floor(v175)
+                        end
+
+                        u118()
+                        ImageButton2.MouseButton1Down:Connect(function()
+                            if not u114 then
+                                u114 = true
+                                ImageLabel2.ClipsDescendants = false
+                                Frame5.ClipsDescendants = false
+
+                                TweenService:Create(ImageLabel8, TweenInfo.new(0.75, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 171, 0, 175),
+                                }):Play()
+                            elseif u114 then
+                                u114 = false
+
+                                TweenService:Create(ImageLabel8, TweenInfo.new(0.75, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 0, 0, 175),
+                                }):Play()
+                            end
+                        end)
+
+                        local t1, u120, u121 = {
+                            H = 1,
+                            S = 1,
+                            V = 1,
+                        }, nil, nil
+
+                        local function u122(p27)
+                            local v177, v178, AbsoluteSizeX, AbsoluteSizeY = Mouse.X - p27.AbsolutePosition.X, Mouse.Y - p27.AbsolutePosition.Y, p27.AbsoluteSize.X, p27.AbsoluteSize.Y
+                            local v181, v182 = math.clamp(v177, 0, AbsoluteSizeX), math.clamp(v178, 0, AbsoluteSizeY)
+
+                            return v181 / AbsoluteSizeX, v182 / AbsoluteSizeY
+                        end
+                        local function u123(p28)
+                            local v184 = Mouse.Y - p28.AbsolutePosition.Y
+
+                            MaxY2 = p28.AbsoluteSize.Y
+
+                            return math.clamp(v184, -10, MaxY2) / MaxY2
+                        end
+                        local function u124()
+                            u118()
+
+                            color3 = Color3.fromHSV(t1.H, t1.S, t1.V)
+                            ImageButton2.ImageColor3 = color3
+                            ImageLabel15.BackgroundColor3 = Color3.fromHSV(t1.H, 1, 1)
+
+                            p26(ImageButton2.ImageColor3)
+                        end
+
+                        ImageLabel15.MouseLeave:Connect(function()
+                            if u120 then
+                                u120:Disconnect()
+
+                                u120 = nil
+                            end
+                            if u121 then
+                                u121:Disconnect()
+
+                                u121 = nil
+                            end
+                        end)
+                        ImageLabel13.MouseLeave:Connect(function()
+                            if u120 then
+                                u120:Disconnect()
+
+                                u120 = nil
+                            end
+                            if u121 then
+                                u121:Disconnect()
+
+                                u121 = nil
+                            end
+                        end)
+                        ImageButton.MouseButton1Down:Connect(function()
+                            if u115 then
+                                if u115 then
+                                    u115 = false
+
+                                    TweenService:Create(ImageButton, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                                end
+                            else
+                                u115 = true
+
+                                TweenService:Create(ImageButton, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
+                            end
+
+                            while u115 do
+                                color3_2 = Color3.fromHSV(n1, 1, 1)
+                                ImageButton2.ImageColor3 = color3_2
+                                ImageLabel15.BackgroundColor3 = color3_2
+
+                                p26(color3_2)
+                                u118()
+                                task.wait()
+                            end
+                        end)
+                        ImageLabel15.InputBegan:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 and not u115 then
+                                if u120 then
+                                    u120:Disconnect()
+                                end
+
+                                u120 = RunService.RenderStepped:Connect(function()
+                                    local v192, v193 = u122(ImageLabel14)
+
+                                    ImageLabel16.Position = UDim2.new(v192, 0, v193, 0)
+                                    t1.S = v192
+                                    t1.V = 1 - v193
+
+                                    u124()
+                                end)
+                            end
+                        end)
+                        ImageLabel15.InputEnded:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 and u120 then
+                                u120:Disconnect()
+                            end
+                        end)
+                        ImageLabel13.InputBegan:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 and not u115 then
+                                if u121 then
+                                    u121:Disconnect()
+                                end
+
+                                u121 = RunService.RenderStepped:Connect(function()
+                                    local _, v195 = u122(ImageLabel12)
+                                    local v196 = u123(ImageLabel12)
+
+                                    t1.H = 1 - v195
+
+                                    TweenService:Create(Frame11, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                        Position = UDim2.new(-0.25, 0, v196, 0),
+                                    }):Play()
+                                    u124()
+                                end)
+                            end
+                        end)
+                        ImageLabel13.InputEnded:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 and u121 then
+                                u121:Disconnect()
+                            end
+                        end)
+                        TextButton2.MouseButton1Down:Connect(function()
+                            if u53 then
+                                if u53 then
+                                    u114 = false
+
+                                    TweenService:Create(ImageLabel8, TweenInfo.new(0.75, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                        Size = UDim2.new(0, 0, 0, 175),
+                                    }):Play()
+
+                                    ImageLabel2.ClipsDescendants = true
+                                    Frame5.ClipsDescendants = true
+
+                                    u55(30)
+                                    u34(30)
+                                end
+                            else
+                                ImageLabel2.ClipsDescendants = true
+                                Frame5.ClipsDescendants = true
+
+                                u54(30)
+                                u33(30)
+                            end
+                        end)
+                        TextButton.MouseButton1Down:Connect(function()
+                            u114 = false
+
+                            TweenService:Create(ImageLabel8, TweenInfo.new(0.75, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                Size = UDim2.new(0, 0, 0, 175),
+                            }):Play()
+
+                            ImageLabel2.ClipsDescendants = true
+                            Frame5.ClipsDescendants = true
+
+                            if u32 then
+                                if u32 then
+                                    if u53 then
+                                        u34(30)
+                                        TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                                        TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                    elseif not u53 then
+                                        TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                    end
+                                end
+                            elseif not u53 then
+                                if not u53 then
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                                end
+                            else
+                                u33(30)
+                                TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 360}):Play()
+                                TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                            end
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                            TextButton2.Visible = false
+
+                            repeat
+                                task.wait()
+                            until TextButton2.TextTransparency == 1
+
+                            TextButton2.Visible = true
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                        end)
+                    end,
+                    CreateButton = function(_, p30, p31)
+                        local Frame12, TextButton3, ImageLabel17 = Instance.new'Frame', Instance.new'TextButton', Instance.new'ImageLabel'
+
+                        Frame12.Name = u10(p30) .. 'ButtonHolder'
+                        Frame12.Parent = Frame5
+                        Frame12.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        Frame12.BorderSizePixel = 0
+                        Frame12.Size = UDim2.new(0, 170, 0, 30)
+                        TextButton3.Name = 'Button'
+                        TextButton3.Parent = Frame12
+                        TextButton3.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        TextButton3.BackgroundTransparency = 1
+                        TextButton3.BorderSizePixel = 0
+                        TextButton3.Position = UDim2.new(0.052941177, 0, 0, 0)
+                        TextButton3.Size = UDim2.new(0, 153, 0, 24)
+                        TextButton3.ZIndex = 2
+                        TextButton3.AutoButtonColor = false
+                        TextButton3.Font = Enum.Font.SourceSansBold
+                        TextButton3.Text = p30
+                        TextButton3.TextColor3 = Color3.new(1, 1, 1)
+                        TextButton3.TextSize = 14
+                        ImageLabel17.Name = 'ButtonRound'
+                        ImageLabel17.Parent = TextButton3
+                        ImageLabel17.Active = true
+                        ImageLabel17.AnchorPoint = Vector2.new(0.5, 0.5)
+                        ImageLabel17.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel17.BackgroundTransparency = 1
+                        ImageLabel17.BorderSizePixel = 0
+                        ImageLabel17.ClipsDescendants = true
+                        ImageLabel17.Position = UDim2.new(0.5, 0, 0.5, 0)
+                        ImageLabel17.Selectable = true
+                        ImageLabel17.Size = UDim2.new(1, 0, 1, 0)
+                        ImageLabel17.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel17.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel17.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel17.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel17.SliceScale = 0.04
+
+                        TextButton3.MouseButton1Down:Connect(function()
+                            p31(TextButton3)
+                        end)
+                        TextButton2.MouseButton1Down:Connect(function()
+                            if u53 then
+                                if u53 then
+                                    u55(30)
+                                    u34(30)
+                                end
+                            else
+                                u54(30)
+                                u33(30)
+                            end
+                        end)
+                        TextButton.MouseButton1Down:Connect(function()
+                            if not u32 then
+                                if not u53 then
+                                    if not u53 then
+                                        TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                                    end
+                                else
+                                    u33(30)
+                                    TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 360}):Play()
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                                end
+                            elseif u32 then
+                                if u53 then
+                                    u34(30)
+                                    TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                elseif not u53 then
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                end
+                            end
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                            TextButton2.Visible = false
+
+                            repeat
+                                task.wait()
+                            until TextButton2.TextTransparency == 1
+
+                            TextButton2.Visible = true
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                        end)
+                    end,
+                    CreateTextbox = function(_, p33, p34)
+                        local Frame13, TextBox, ImageLabel18 = Instance.new'Frame', Instance.new'TextBox', Instance.new'ImageLabel'
+
+                        Frame13.Name = u10(p33) .. 'TextBoxHolder'
+                        Frame13.Parent = Frame5
+                        Frame13.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        Frame13.BorderSizePixel = 0
+                        Frame13.Size = UDim2.new(0, 170, 0, 30)
+                        TextBox.Parent = Frame13
+                        TextBox.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        TextBox.BackgroundTransparency = 1
+                        TextBox.ClipsDescendants = true
+                        TextBox.Position = UDim2.new(0.0529999994, 0, 0, 0)
+                        TextBox.Size = UDim2.new(0, 153, 0, 24)
+                        TextBox.ZIndex = 2
+                        TextBox.Font = Enum.Font.SourceSansBold
+                        TextBox.PlaceholderText = p33
+                        TextBox.Text = ''
+                        TextBox.TextColor3 = Color3.new(1, 1, 1)
+                        TextBox.TextSize = 14
+                        ImageLabel18.Name = 'TextBoxRound'
+                        ImageLabel18.Parent = TextBox
+                        ImageLabel18.Active = true
+                        ImageLabel18.AnchorPoint = Vector2.new(0.5, 0.5)
+                        ImageLabel18.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel18.BackgroundTransparency = 1
+                        ImageLabel18.BorderSizePixel = 0
+                        ImageLabel18.ClipsDescendants = true
+                        ImageLabel18.Position = UDim2.new(0.5, 0, 0.5, 0)
+                        ImageLabel18.Selectable = true
+                        ImageLabel18.Size = UDim2.new(1, 0, 1, 0)
+                        ImageLabel18.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel18.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel18.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel18.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel18.SliceScale = 0.04
+
+                        TextBox.FocusLost:Connect(function(enterPressed)
+                            if enterPressed then
+                                p34(TextBox.Text)
+                            end
+                        end)
+                        TextButton2.MouseButton1Down:Connect(function()
+                            if not u53 then
+                                u54(30)
+                                u33(30)
+                            elseif u53 then
+                                u55(30)
+                                u34(30)
+                            end
+                        end)
+                        TextButton.MouseButton1Down:Connect(function()
+                            if not u32 then
+                                if u53 then
+                                    u33(30)
+                                    TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 360}):Play()
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                                elseif not u53 then
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                                end
+                            elseif u32 then
+                                if u53 then
+                                    u34(30)
+                                    TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                elseif not u53 then
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                end
+                            end
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                            TextButton2.Visible = false
+
+                            repeat
+                                task.wait()
+                            until TextButton2.TextTransparency == 1
+
+                            TextButton2.Visible = true
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                        end)
+                    end,
+                    CreateDropdown = function(_, p36, p37, p38, p39)
+                        local Frame14, TextLabel11, ImageLabel19, TextButton4, ImageLabel20, ScrollingFrame, UIListLayout3, v153, n6, v155, u156, n7, n8, u159 = Instance.new'Frame', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'TextButton', Instance.new'ImageLabel', Instance.new'ScrollingFrame', Instance.new'UIListLayout', u10(p36), 1, false, p37[p38], 0, 0, false
+
+                        Frame14.Name = v153 .. 'DropdownHolder'
+                        Frame14.Parent = Frame5
+                        Frame14.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        Frame14.BorderSizePixel = 0
+                        Frame14.Size = UDim2.new(0, 170, 0, 30)
+                        TextLabel11.Name = 'DropdownTitle'
+                        TextLabel11.Parent = Frame14
+                        TextLabel11.BackgroundColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        TextLabel11.BackgroundTransparency = 1
+                        TextLabel11.BorderSizePixel = 0
+                        TextLabel11.Position = UDim2.new(0.0529999994, 0, 0, 0)
+                        TextLabel11.Size = UDim2.new(0, 153, 0, 24)
+                        TextLabel11.ZIndex = 2
+                        TextLabel11.Font = Enum.Font.SourceSansBold
+                        TextLabel11.Text = u156
+                        TextLabel11.TextColor3 = Color3.new(1, 1, 1)
+                        TextLabel11.TextSize = 14
+                        ImageLabel19.Name = 'DropdownRound'
+                        ImageLabel19.Parent = TextLabel11
+                        ImageLabel19.Active = true
+                        ImageLabel19.AnchorPoint = Vector2.new(0.5, 0.5)
+                        ImageLabel19.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ImageLabel19.BackgroundTransparency = 1
+                        ImageLabel19.BorderSizePixel = 0
+                        ImageLabel19.ClipsDescendants = true
+                        ImageLabel19.Position = UDim2.new(0.5, 0, 0.5, 0)
+                        ImageLabel19.Selectable = true
+                        ImageLabel19.Size = UDim2.new(1, 0, 1, 0)
+                        ImageLabel19.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel19.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
+                        ImageLabel19.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel19.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel19.SliceScale = 0.04
+                        TextButton4.Name = 'DropdownToggle'
+                        TextButton4.Parent = TextLabel11
+                        TextButton4.BackgroundColor3 = Color3.new(1, 1, 1)
+                        TextButton4.BackgroundTransparency = 1
+                        TextButton4.Position = UDim2.new(0.816928029, 0, 0, 0)
+                        TextButton4.Size = UDim2.new(0, 28, 0, 24)
+                        TextButton4.AutoButtonColor = false
+                        TextButton4.Font = Enum.Font.SourceSansBold
+                        TextButton4.Text = '>'
+                        TextButton4.TextColor3 = Color3.new(1, 1, 1)
+                        TextButton4.TextSize = 15
+                        ImageLabel20.Name = 'DropdownMain'
+                        ImageLabel20.Parent = TextLabel11
+                        ImageLabel20.BackgroundColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        ImageLabel20.BackgroundTransparency = 1
+                        ImageLabel20.ClipsDescendants = true
+                        ImageLabel20.Position = UDim2.new(1.09275186, 0, -3.36658955E-2, 0)
+                        ImageLabel20.Size = UDim2.new(0, 0, 0, n8)
+                        ImageLabel20.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel20.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
+                        ImageLabel20.ScaleType = Enum.ScaleType.Slice
+                        ImageLabel20.SliceCenter = Rect.new(100, 100, 100, 100)
+                        ImageLabel20.SliceScale = 0.04
+                        ScrollingFrame.Parent = ImageLabel20
+                        ScrollingFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+                        ScrollingFrame.BackgroundTransparency = 1
+                        ScrollingFrame.BorderSizePixel = 0
+                        ScrollingFrame.Size = UDim2.new(0, 153, 0, n8)
+                        ScrollingFrame.BottomImage = 'rbxasset://textures/ui/Scroll/scroll-middle.png'
+                        ScrollingFrame.CanvasSize = UDim2.new(0, 0, n6, 0)
+                        ScrollingFrame.ScrollBarThickness = 3
+                        ScrollingFrame.TopImage = 'rbxasset://textures/ui/Scroll/scroll-middle.png'
+                        ScrollingFrame.ScrollingDirection = 'Y'
+                        UIListLayout3.Name = 'ButtonLayout'
+                        UIListLayout3.Parent = ScrollingFrame
+                        UIListLayout3.SortOrder = Enum.SortOrder.LayoutOrder
+
+                        for _, v in pairs(p37)do
+                            local TextButton5 = Instance.new'TextButton'
+
+                            n7 = n7 + 1
+                            TextButton5.Name = u10(v) .. 'Button'
+                            TextButton5.Parent = ScrollingFrame
+                            TextButton5.BackgroundColor3 = Color3.new(0.215686, 0.215686, 0.215686)
+                            TextButton5.BackgroundTransparency = 1
+                            TextButton5.BorderSizePixel = 0
+                            TextButton5.Position = UDim2.new(0, 0, 0, 0)
+                            TextButton5.Size = UDim2.new(0, 153, 0, 25)
+                            TextButton5.AutoButtonColor = false
+                            TextButton5.Font = Enum.Font.SourceSansBold
+                            TextButton5.Text = v
+                            TextButton5.TextColor3 = Color3.new(1, 1, 1)
+                            TextButton5.TextSize = 14
+
+                            if not (n7 <= 4) then
+                                if n7 >= 4 then
+                                    v155 = true
+                                end
+                            else
+                                n8 = n8 + 25
+                                ImageLabel20.Size = UDim2.new(0, 0, 0, n8)
+                            end
+                            if v155 then
+                                n6 = n6 + 0.25
+                                ScrollingFrame.CanvasSize = UDim2.new(0, 0, n6, 0)
+                            end
+
+                            TextButton5.InputBegan:Connect(function(input)
+                                if input.UserInputType == Enum.UserInputType.MouseMovement then
+                                    TweenService:Create(TextButton5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0.5}):Play()
+                                end
+                            end)
+                            TextButton5.InputEnded:Connect(function(input)
+                                if input.UserInputType == Enum.UserInputType.MouseMovement then
+                                    TweenService:Create(TextButton5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                end
+                            end)
+                            TextButton5.MouseButton1Down:Connect(function()
+                                u156 = v
+
+                                p39(v)
+
+                                u159 = false
+                                TextButton4.Text = '>'
+
+                                TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                                TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    TextColor3 = Color3.new(1, 1, 1),
+                                }):Play()
+
+                                TextLabel11.Text = u156
+
+                                TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ScrollBarImageTransparency = 1}):Play()
+                                TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 0, 0, n8),
+                                }):Play()
+                                TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 0, 0, n8),
+                                }):Play()
+                            end)
+                        end
+
+                        TextButton4.MouseButton1Down:Connect(function()
+                            if u159 then
+                                u159 = false
+                                TextButton4.Text = '>'
+
+                                TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                                TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    TextColor3 = Color3.new(1, 1, 1),
+                                }):Play()
+
+                                TextLabel11.Text = u156
+
+                                TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ScrollBarImageTransparency = 1}):Play()
+                                TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 0, 0, n8),
+                                }):Play()
+                                TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 0, 0, n8),
+                                }):Play()
+                            elseif not u159 then
+                                ImageLabel2.ClipsDescendants = false
+                                Frame5.ClipsDescendants = false
+                                u159 = true
+                                TextButton4.Text = '<'
+
+                                TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Rotation = -360,
+                                }):Play()
+                                TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    TextColor3 = Color3.new(0.698039, 0.698039, 0.698039),
+                                }):Play()
+
+                                TextLabel11.Text = p36
+
+                                TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ScrollBarImageTransparency = 0}):Play()
+                                TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 153, 0, n8),
+                                }):Play()
+                                TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 153, 0, n8),
+                                }):Play()
+                            end
+                        end)
+                        TextButton2.MouseButton1Down:Connect(function()
+                            if not u53 then
+                                u54(30)
+                                u33(30)
+                            elseif u53 then
+                                u159 = false
+                                TextButton4.Text = '>'
+
+                                TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                                TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    TextColor3 = Color3.new(1, 1, 1),
+                                }):Play()
+
+                                TextLabel11.Text = u156
+
+                                TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ScrollBarImageTransparency = 1}):Play()
+                                TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 0, 0, 0),
+                                }):Play()
+                                TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Size = UDim2.new(0, 0, 0, n8),
+                                }):Play()
+
+                                ImageLabel2.ClipsDescendants = true
+                                Frame5.ClipsDescendants = true
+
+                                u55(30)
+                                u34(30)
+                            end
+                        end)
+                        TextButton.MouseButton1Down:Connect(function()
+                            u159 = false
+                            TextButton4.Text = '>'
+
+                            TweenService:Create(TextButton4, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                            TweenService:Create(TextLabel11, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                TextColor3 = Color3.new(1, 1, 1),
+                            }):Play()
+
+                            TextLabel11.Text = u156
+
+                            TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ScrollBarImageTransparency = 1}):Play()
+                            TweenService:Create(ScrollingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                Size = UDim2.new(0, 0, 0, n8),
+                            }):Play()
+                            TweenService:Create(ImageLabel20, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                Size = UDim2.new(0, 0, 0, n8),
+                            }):Play()
+
+                            ImageLabel2.ClipsDescendants = true
+                            Frame5.ClipsDescendants = true
+
+                            if u32 then
+                                if u32 then
+                                    if u53 then
+                                        u34(30)
+                                        TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+                                        TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                    elseif not u53 then
+                                        TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+                                    end
+                                end
+                            elseif not u53 then
+                                if not u53 then
+                                    TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                                end
+                            else
+                                u33(30)
+                                TweenService:Create(TextButton2, TweenInfo.new(0, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                                    Rotation = -360,
+                                }):Play()
+                                TweenService:Create(Frame5, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                            end
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
+
+                            TextButton2.Visible = false
+
+                            repeat
+                                task.wait()
+                            until TextButton2.TextTransparency == 1
+
+                            TextButton2.Visible = true
+
+                            TweenService:Create(TextButton2, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                        end)
+                    end,
+                }
+            end,
+        }
+    end,
 }
