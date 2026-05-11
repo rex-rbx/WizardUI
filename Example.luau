@@ -1,0 +1,25 @@
+local Library = loadstring(game:HttpGet("https://github.com/rex-rbx/WizardUI/raw/refs/heads/main/Library.luau"))()
+local Window = Library:NewWindow("Window")
+local Section = Window:NewSection("SectionName")
+Section:CreateButton("ButtonName", function()
+	print("Clicked")
+end)
+Section:CreateTextbox("TextBox", function(text)
+	print(text)
+end)
+Section:CreateToggle("ToggleName", function(value)
+	print(value)
+end)
+Section:CreateDropdown("DropDown", {
+	"Hello",
+	"World",
+	"Hello World"
+}, 2, function(text)
+	print(text)
+end)
+Section:CreateSlider("Slider", 0, 100, 15, false, function(value)
+	print(value)
+end)
+Section:CreateColorPicker("Picker", Color3.new(255, 255, 255), function(value)
+	print(value)
+end)
