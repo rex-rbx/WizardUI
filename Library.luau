@@ -73,7 +73,7 @@ for i, v in ipairs(SEQ)do
     buffer.writeu8(INDEX_BUF, string.byte(v), i)
 end
 
-buffer.writeu8(INDEX_BUF, string.byte'=', 0)
+buffer.writeu8(INDEX_BUF, string.byte('='), 0)
 
 local b64 = {}
 
@@ -125,7 +125,7 @@ end
 local cloneref = cloneref or clonereference or function(inst)
     return inst
 end
-local UserInputService, TweenService, RunService, GuiService, HttpService, RandomUTF8String, CustomAssets, OrigAssets = cloneref(game:GetService'UserInputService'), cloneref(game:GetService'TweenService'), cloneref(game:GetService'RunService'), cloneref(game:GetService'GuiService'), cloneref(game:GetService'HttpService'), function(Length)
+local UserInputService, TweenService, RunService, GuiService, HttpService, RandomUTF8String, CustomAssets, OrigAssets = cloneref(game:GetService('UserInputService')), cloneref(game:GetService('TweenService')), cloneref(game:GetService('RunService')), cloneref(game:GetService('GuiService')), cloneref(game:GetService('HttpService')), function(Length)
     local b, offset, Ranges = buffer.create(Length), 0, {
         {0xff01, 0xff5e},
         {0xa1, 0xff},
@@ -189,7 +189,7 @@ end, nil, false
 if not gethui or not pcall(function()
     return gethui()
 end) or not gethui() then
-    CoreGui = cloneref(game:GetService'CoreGui')
+    CoreGui = cloneref(game:GetService('CoreGui'))
     UseCoreGui = true
 end
 
@@ -205,10 +205,10 @@ local Mouse, n1, n2, n3, ScreenGui, Frame = setmetatable({}, {
             return vec.Y
         end
     end,
-}), 0, 1, 0, Instance.new'ScreenGui', Instance.new'Frame'
+}), 0, 1, 0, Instance.new('ScreenGui'), Instance.new('Frame')
 
 ScreenGui.Name = RandomUTF8String(64)
-ScreenGui.Parent = (UseCoreGui and (CoreGui:FindFirstChild'RobloxGui' or CoreGui)) or gethui()
+ScreenGui.Parent = (UseCoreGui and (CoreGui:FindFirstChild('RobloxGui') or CoreGui)) or gethui()
 Frame.Name = 'Container'
 Frame.Parent = ScreenGui
 Frame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -240,7 +240,7 @@ end)
 
 return {
     NewWindow = function(_, p5)
-        local ImageLabel, Frame2, TextButton, TextLabel, Frame3, ImageLabel2, UIListLayout, Frame4, v30 = Instance.new'ImageLabel', Instance.new'Frame', Instance.new'TextButton', Instance.new'TextLabel', Instance.new'Frame', Instance.new'ImageLabel', Instance.new'UIListLayout', Instance.new'Frame', u10(p5)
+        local ImageLabel, Frame2, TextButton, TextLabel, Frame3, ImageLabel2, UIListLayout, Frame4, v30 = Instance.new('ImageLabel'), Instance.new('Frame'), Instance.new('TextButton'), Instance.new('TextLabel'), Instance.new('Frame'), Instance.new('ImageLabel'), Instance.new('UIListLayout'), Instance.new('Frame'), u10(p5)
 
         n3 = n3 + 2
 
@@ -268,7 +268,7 @@ return {
         ImageLabel.Position = UDim2.new(n3, -100, 3, -265)
         ImageLabel.Size = UDim2.new(0, 170, 0, 30)
         ImageLabel.ZIndex = 2
-        ImageLabel.Image = getAsset'Sprite_Not_For_Roundify'
+        ImageLabel.Image = getAsset('Sprite_Not_For_Roundify')
         ImageLabel.ImageColor3 = Color3.new(0.0980392, 0.0980392, 0.0980392)
         ImageLabel.ScaleType = Enum.ScaleType.Slice
         ImageLabel.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -352,7 +352,7 @@ return {
         ImageLabel2.BackgroundTransparency = 1
         ImageLabel2.ClipsDescendants = true
         ImageLabel2.Size = UDim2.new(0, 170, 0, n4)
-        ImageLabel2.Image = getAsset'Sprite_Not_For_Roundify'
+        ImageLabel2.Image = getAsset('Sprite_Not_For_Roundify')
         ImageLabel2.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
         ImageLabel2.ScaleType = Enum.ScaleType.Slice
         ImageLabel2.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -371,7 +371,7 @@ return {
 
         return {
             NewSection = function(_, p9)
-                local Frame5, Frame6, TextButton2, TextLabel2, UIListLayout2, v50, s1, n5, u53 = Instance.new'Frame', Instance.new'Frame', Instance.new'TextButton', Instance.new'TextLabel', Instance.new'UIListLayout', u10(p9), 'v', 30, false
+                local Frame5, Frame6, TextButton2, TextLabel2, UIListLayout2, v50, s1, n5, u53 = Instance.new('Frame'), Instance.new('Frame'), Instance.new('TextButton'), Instance.new('TextLabel'), Instance.new('UIListLayout'), u10(p9), 'v', 30, false
 
                 local function u54(p10)
                     n5 = n5 + p10
@@ -493,7 +493,7 @@ return {
 
                 return {
                     CreateToggle = function(_, p13, p14)
-                        local Frame7, TextLabel3, ImageLabel3, ImageButton, v66, u67 = Instance.new'Frame', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'ImageButton', u10(p13), false
+                        local Frame7, TextLabel3, ImageLabel3, ImageButton, v66, u67 = Instance.new('Frame'), Instance.new('TextLabel'), Instance.new('ImageLabel'), Instance.new('ImageButton'), u10(p13), false
 
                         Frame7.Name = v66 .. 'ToggleHolder'
                         Frame7.Parent = Frame5
@@ -519,7 +519,7 @@ return {
                         ImageLabel3.BorderSizePixel = 0
                         ImageLabel3.Position = UDim2.new(0.847058833, 0, 0.166666672, 0)
                         ImageLabel3.Size = UDim2.new(0, 20, 0, 20)
-                        ImageLabel3.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel3.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel3.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageButton.Name = 'ToggleButton'
                         ImageButton.Parent = ImageLabel3
@@ -527,7 +527,7 @@ return {
                         ImageButton.BackgroundTransparency = 1
                         ImageButton.Position = UDim2.new(0, 2, 0, 2)
                         ImageButton.Size = UDim2.new(0, 16, 0, 16)
-                        ImageButton.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageButton.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageButton.ImageColor3 = Color3.new(1, 0.341176, 0.341176)
                         ImageButton.ImageTransparency = 1
 
@@ -592,7 +592,7 @@ return {
                         end)
                     end,
                     CreateSlider = function(_, p16, p17, p18, p19, p20, p21)
-                        local Frame8, TextLabel4, ImageLabel4, TextLabel5, ImageLabel5, ImageLabel6, v84, u85, u86 = Instance.new'Frame', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'ImageLabel', u10(p16), false, p20
+                        local Frame8, TextLabel4, ImageLabel4, TextLabel5, ImageLabel5, ImageLabel6, v84, u85, u86 = Instance.new('Frame'), Instance.new('TextLabel'), Instance.new('ImageLabel'), Instance.new('TextLabel'), Instance.new('ImageLabel'), Instance.new('ImageLabel'), u10(p16), false, p20
 
                         Frame8.Name = v84 .. 'SliderHolder'
                         Frame8.Parent = Frame5
@@ -617,7 +617,7 @@ return {
                         ImageLabel4.BackgroundTransparency = 1
                         ImageLabel4.Position = UDim2.new(0.747058809, 0, 0, 0)
                         ImageLabel4.Size = UDim2.new(0, 35, 0, 15)
-                        ImageLabel4.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel4.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel4.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageLabel4.ImageTransparency = 0.5
                         ImageLabel4.ScaleType = Enum.ScaleType.Slice
@@ -639,7 +639,7 @@ return {
                         ImageLabel5.Position = UDim2.new(0.0529999994, 0, 0.649999976, 0)
                         ImageLabel5.Selectable = true
                         ImageLabel5.Size = UDim2.new(0, 153, 0, 5)
-                        ImageLabel5.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel5.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel5.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageLabel5.ImageTransparency = 0.5
                         ImageLabel5.ScaleType = Enum.ScaleType.Slice
@@ -651,7 +651,7 @@ return {
                         ImageLabel6.BackgroundColor3 = Color3.new(1, 1, 1)
                         ImageLabel6.BackgroundTransparency = 1
                         ImageLabel6.Size = UDim2.new(((p19 or p17) - p17) / (p18 - p17), 0, 0, 5)
-                        ImageLabel6.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel6.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel6.ScaleType = Enum.ScaleType.Slice
                         ImageLabel6.SliceCenter = Rect.new(100, 100, 100, 100)
                         ImageLabel6.SliceScale = 0.02
@@ -734,7 +734,7 @@ return {
                         end)
                     end,
                     CreateColorPicker = function(_, p24, p25, p26)
-                        local Frame9, Frame10, TextLabel6, ImageLabel7, ImageButton, TextLabel7, ImageButton2, ImageLabel8, TextLabel8, ImageLabel9, TextLabel9, ImageLabel10, TextLabel10, ImageLabel11, ImageLabel12, ImageLabel13, Frame11, ImageLabel14, ImageLabel15, ImageLabel16, v113 = Instance.new'Frame', Instance.new'Frame', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'ImageButton', Instance.new'TextLabel', Instance.new'ImageButton', Instance.new'ImageLabel', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'ImageLabel', Instance.new'ImageLabel', Instance.new'Frame', Instance.new'ImageLabel', Instance.new'ImageLabel', Instance.new'ImageLabel', u10(p24)
+                        local Frame9, Frame10, TextLabel6, ImageLabel7, ImageButton, TextLabel7, ImageButton2, ImageLabel8, TextLabel8, ImageLabel9, TextLabel9, ImageLabel10, TextLabel10, ImageLabel11, ImageLabel12, ImageLabel13, Frame11, ImageLabel14, ImageLabel15, ImageLabel16, v113 = Instance.new('Frame'), Instance.new('Frame'), Instance.new('TextLabel'), Instance.new('ImageLabel'), Instance.new('ImageButton'), Instance.new('TextLabel'), Instance.new('ImageButton'), Instance.new('ImageLabel'), Instance.new('TextLabel'), Instance.new('ImageLabel'), Instance.new('TextLabel'), Instance.new('ImageLabel'), Instance.new('TextLabel'), Instance.new('ImageLabel'), Instance.new('ImageLabel'), Instance.new('ImageLabel'), Instance.new('Frame'), Instance.new('ImageLabel'), Instance.new('ImageLabel'), Instance.new('ImageLabel'), u10(p24)
 
                         n2 = n2 + 1
 
@@ -763,7 +763,7 @@ return {
                         ImageButton2.BackgroundTransparency = 1
                         ImageButton2.Position = UDim2.new(0.822000027, 0, 0.166999996, 0)
                         ImageButton2.Size = UDim2.new(0, 22, 0, 20)
-                        ImageButton2.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageButton2.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageButton2.ImageColor3 = p25
                         ImageButton2.ScaleType = Enum.ScaleType.Slice
                         ImageButton2.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -776,7 +776,7 @@ return {
                         ImageLabel8.BorderSizePixel = 0
                         ImageLabel8.Position = UDim2.new(1.04705882, 0, -1.36666667, 0)
                         ImageLabel8.Size = UDim2.new(0, 0, 0, 175)
-                        ImageLabel8.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel8.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel8.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
                         ImageLabel8.ScaleType = Enum.ScaleType.Slice
                         ImageLabel8.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -810,7 +810,7 @@ return {
                         ImageLabel7.BorderSizePixel = 0
                         ImageLabel7.Position = UDim2.new(0.847058833, 0, 0.166666672, 0)
                         ImageLabel7.Size = UDim2.new(0, 20, 0, 20)
-                        ImageLabel7.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel7.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel7.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageLabel7.ZIndex = 1 + n2
                         ImageButton.Name = 'RainbowToggleButton'
@@ -819,7 +819,7 @@ return {
                         ImageButton.BackgroundTransparency = 1
                         ImageButton.Position = UDim2.new(0, 2, 0, 2)
                         ImageButton.Size = UDim2.new(0, 16, 0, 16)
-                        ImageButton.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageButton.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageButton.ImageColor3 = Color3.new(1, 0.341176, 0.341176)
                         ImageButton.ImageTransparency = 1
                         ImageButton.ZIndex = 1 + n2
@@ -845,7 +845,7 @@ return {
                         ImageLabel9.Position = UDim2.new(0.5, 0, 0.5, 0)
                         ImageLabel9.Selectable = true
                         ImageLabel9.Size = UDim2.new(1, 0, 1, 0)
-                        ImageLabel9.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel9.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel9.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageLabel9.ScaleType = Enum.ScaleType.Slice
                         ImageLabel9.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -873,7 +873,7 @@ return {
                         ImageLabel11.Position = UDim2.new(0.5, 0, 0.5, 0)
                         ImageLabel11.Selectable = true
                         ImageLabel11.Size = UDim2.new(1, 0, 1, 0)
-                        ImageLabel11.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel11.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel11.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageLabel11.ScaleType = Enum.ScaleType.Slice
                         ImageLabel11.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -901,7 +901,7 @@ return {
                         ImageLabel10.Position = UDim2.new(0.5, 0, 0.5, 0)
                         ImageLabel10.Selectable = true
                         ImageLabel10.Size = UDim2.new(1, 0, 1, 0)
-                        ImageLabel10.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel10.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel10.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageLabel10.ScaleType = Enum.ScaleType.Slice
                         ImageLabel10.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -915,7 +915,7 @@ return {
                         ImageLabel12.Position = UDim2.new(0, 136, 0, 6)
                         ImageLabel12.Size = UDim2.new(0, 28, 0, 114)
                         ImageLabel12.ZIndex = 2 + n2
-                        ImageLabel12.Image = getAsset'Images_Subtraction_1'
+                        ImageLabel12.Image = getAsset('Images_Subtraction_1')
                         ImageLabel12.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
                         ImageLabel12.ScaleType = Enum.ScaleType.Slice
                         ImageLabel12.SliceCenter = Rect.new(128, 128, 128, 128)
@@ -944,7 +944,7 @@ return {
                         ImageLabel14.Position = UDim2.new(0, 7, 0, 6)
                         ImageLabel14.Size = UDim2.new(0, 122, 0, 114)
                         ImageLabel14.ZIndex = 2 + n2
-                        ImageLabel14.Image = getAsset'Images_Subtraction_1'
+                        ImageLabel14.Image = getAsset('Images_Subtraction_1')
                         ImageLabel14.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
                         ImageLabel14.ScaleType = Enum.ScaleType.Slice
                         ImageLabel14.SliceCenter = Rect.new(128, 128, 128, 128)
@@ -954,7 +954,7 @@ return {
                         ImageLabel15.BackgroundColor3 = p25
                         ImageLabel15.BorderSizePixel = 0
                         ImageLabel15.Size = UDim2.new(0, 122, 0, 114)
-                        ImageLabel15.Image = getAsset'Saturation_Value'
+                        ImageLabel15.Image = getAsset('Saturation_Value')
                         ImageLabel15.ZIndex = 1 + n2
                         ImageLabel16.Name = 'SaturationMarker'
                         ImageLabel16.Parent = ImageLabel14
@@ -1180,7 +1180,7 @@ return {
                         end)
                     end,
                     CreateButton = function(_, p30, p31)
-                        local Frame12, TextButton3, ImageLabel17 = Instance.new'Frame', Instance.new'TextButton', Instance.new'ImageLabel'
+                        local Frame12, TextButton3, ImageLabel17 = Instance.new('Frame'), Instance.new('TextButton'), Instance.new('ImageLabel')
 
                         Frame12.Name = u10(p30) .. 'ButtonHolder'
                         Frame12.Parent = Frame5
@@ -1211,7 +1211,7 @@ return {
                         ImageLabel17.Position = UDim2.new(0.5, 0, 0.5, 0)
                         ImageLabel17.Selectable = true
                         ImageLabel17.Size = UDim2.new(1, 0, 1, 0)
-                        ImageLabel17.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel17.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel17.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageLabel17.ScaleType = Enum.ScaleType.Slice
                         ImageLabel17.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -1266,7 +1266,7 @@ return {
                         end)
                     end,
                     CreateTextbox = function(_, p33, p34)
-                        local Frame13, TextBox, ImageLabel18 = Instance.new'Frame', Instance.new'TextBox', Instance.new'ImageLabel'
+                        local Frame13, TextBox, ImageLabel18 = Instance.new('Frame'), Instance.new('TextBox'), Instance.new('ImageLabel')
 
                         Frame13.Name = u10(p33) .. 'TextBoxHolder'
                         Frame13.Parent = Frame5
@@ -1296,7 +1296,7 @@ return {
                         ImageLabel18.Position = UDim2.new(0.5, 0, 0.5, 0)
                         ImageLabel18.Selectable = true
                         ImageLabel18.Size = UDim2.new(1, 0, 1, 0)
-                        ImageLabel18.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel18.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel18.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageLabel18.ScaleType = Enum.ScaleType.Slice
                         ImageLabel18.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -1349,7 +1349,7 @@ return {
                         end)
                     end,
                     CreateDropdown = function(_, p36, p37, p38, p39)
-                        local Frame14, TextLabel11, ImageLabel19, TextButton4, ImageLabel20, ScrollingFrame, UIListLayout3, v153, n6, v155, u156, n7, n8, u159 = Instance.new'Frame', Instance.new'TextLabel', Instance.new'ImageLabel', Instance.new'TextButton', Instance.new'ImageLabel', Instance.new'ScrollingFrame', Instance.new'UIListLayout', u10(p36), 1, false, p37[p38], 0, 0, false
+                        local Frame14, TextLabel11, ImageLabel19, TextButton4, ImageLabel20, ScrollingFrame, UIListLayout3, v153, n6, v155, u156, n7, n8, u159 = Instance.new('Frame'), Instance.new('TextLabel'), Instance.new('ImageLabel'), Instance.new('TextButton'), Instance.new('ImageLabel'), Instance.new('ScrollingFrame'), Instance.new('UIListLayout'), u10(p36), 1, false, p37[p38], 0, 0, false
 
                         Frame14.Name = v153 .. 'DropdownHolder'
                         Frame14.Parent = Frame5
@@ -1379,7 +1379,7 @@ return {
                         ImageLabel19.Position = UDim2.new(0.5, 0, 0.5, 0)
                         ImageLabel19.Selectable = true
                         ImageLabel19.Size = UDim2.new(1, 0, 1, 0)
-                        ImageLabel19.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel19.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel19.ImageColor3 = Color3.new(0.254902, 0.254902, 0.254902)
                         ImageLabel19.ScaleType = Enum.ScaleType.Slice
                         ImageLabel19.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -1402,7 +1402,7 @@ return {
                         ImageLabel20.ClipsDescendants = true
                         ImageLabel20.Position = UDim2.new(1.09275186, 0, -3.36658955E-2, 0)
                         ImageLabel20.Size = UDim2.new(0, 0, 0, n8)
-                        ImageLabel20.Image = getAsset'Sprite_Not_For_Roundify'
+                        ImageLabel20.Image = getAsset('Sprite_Not_For_Roundify')
                         ImageLabel20.ImageColor3 = Color3.new(0.137255, 0.137255, 0.137255)
                         ImageLabel20.ScaleType = Enum.ScaleType.Slice
                         ImageLabel20.SliceCenter = Rect.new(100, 100, 100, 100)
@@ -1422,7 +1422,7 @@ return {
                         UIListLayout3.SortOrder = Enum.SortOrder.LayoutOrder
 
                         for _, v in pairs(p37)do
-                            local TextButton5 = Instance.new'TextButton'
+                            local TextButton5 = Instance.new('TextButton')
 
                             n7 = n7 + 1
                             TextButton5.Name = u10(v) .. 'Button'
